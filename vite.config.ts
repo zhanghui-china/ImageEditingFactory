@@ -32,6 +32,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/flux-api/, ''),
       },
+      '/api/history': {
+        target: 'http://localhost:8789',
+        changeOrigin: true,
+      },
     },
   },
 })

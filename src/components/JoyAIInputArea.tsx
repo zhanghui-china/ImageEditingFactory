@@ -8,6 +8,16 @@ import {
   joyAISpatialTransform,
   joyAIUploadImages,
 } from '../services/api';
+import { saveHistory } from '../services/historyApi';
+
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
 
 export default function JoyAIInputArea() {
   const [input, setInput] = useState('');
@@ -54,6 +64,7 @@ export default function JoyAIInputArea() {
     if (isLoading) return;
 
     const startTime = Date.now();
+    const requestTime = new Date().toISOString();
     const userMessage = {
       id: Date.now().toString(),
       role: 'user' as const,
@@ -65,6 +76,8 @@ export default function JoyAIInputArea() {
 
     addMessage(userMessage);
     setLoading(true);
+    const currentInput = input;
+    const currentFiles = [...files];
     setInput('');
 
     if (joyaiMode === 'text-to-image') {
@@ -73,8 +86,9 @@ export default function JoyAIInputArea() {
         steps: config.joyaiSteps,
         guidanceScale: config.joyaiGuidanceScale,
         basesize: config.joyaiBasesize,
-        onComplete: (imageUrl) => {
+        onComplete: async (imageUrl) => {
           const duration = Date.now() - startTime;
+          const responseTime = new Date().toISOString();
           const assistantMessage = {
             id: (Date.now() + 1).toString(),
             role: 'assistant' as const,
@@ -86,25 +100,52 @@ export default function JoyAIInputArea() {
           };
           addMessage(assistantMessage);
           setLoading(false);
+          const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
+          saveHistory({
+            model: currentModel,
+            generate_type: joyaiMode,
+            prompt: currentInput,
+            request_images: requestImagesBase64,
+            response_result: 'success',
+            response_images: [imageUrl],
+            request_time: requestTime,
+            response_time: responseTime,
+            duration_ms: duration,
+          }).catch(err => console.error('Failed to save history:', err));
         },
-        onError: (error) => {
+        onError: async (error) => {
+          const duration = Date.now() - startTime;
+          const responseTime = new Date().toISOString();
           setError(error);
           setLoading(false);
+          const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
+          saveHistory({
+            model: currentModel,
+            generate_type: joyaiMode,
+            prompt: currentInput,
+            request_images: requestImagesBase64,
+            response_result: error,
+            response_images: [],
+            request_time: requestTime,
+            response_time: responseTime,
+            duration_ms: duration,
+          }).catch(err => console.error('Failed to save history:', err));
         },
       });
     } else if (joyaiMode === 'edit-image') {
       joyAIUploadImages({
-        files,
-        onComplete: (uploadedImageUrls) => {
+        files: currentFiles,
+        onComplete: async (uploadedImageUrls) => {
           joyAIEditImage({
-            prompt: input,
+            prompt: currentInput,
             imagePath: uploadedImageUrls[0],
             strength: config.joyaiStrength,
             steps: config.joyaiSteps,
             guidanceScale: config.joyaiGuidanceScale,
             basesize: config.joyaiBasesize,
-            onComplete: (imageUrl) => {
+            onComplete: async (imageUrl) => {
               const duration = Date.now() - startTime;
+              const responseTime = new Date().toISOString();
               const assistantMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant' as const,
@@ -118,27 +159,72 @@ export default function JoyAIInputArea() {
               setLoading(false);
               setFiles([]);
               setImagePreviews([]);
+              const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
+              saveHistory({
+                model: currentModel,
+                generate_type: joyaiMode,
+                prompt: currentInput,
+                request_images: requestImagesBase64,
+                response_result: 'success',
+                response_images: [imageUrl],
+                request_time: requestTime,
+                response_time: responseTime,
+                duration_ms: duration,
+              }).catch(err => console.error('Failed to save history:', err));
             },
-            onError: (error) => {
+            onError: async (error) => {
+              const duration = Date.now() - startTime;
+              const responseTime = new Date().toISOString();
               setError(error);
               setLoading(false);
+              setFiles([]);
+              setImagePreviews([]);
+              const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
+              saveHistory({
+                model: currentModel,
+                generate_type: joyaiMode,
+                prompt: currentInput,
+                request_images: requestImagesBase64,
+                response_result: error,
+                response_images: [],
+                request_time: requestTime,
+                response_time: responseTime,
+                duration_ms: duration,
+              }).catch(err => console.error('Failed to save history:', err));
             },
           });
         },
-        onError: (error) => {
+        onError: async (error) => {
+          const duration = Date.now() - startTime;
+          const responseTime = new Date().toISOString();
           setError(error);
           setLoading(false);
+          setFiles([]);
+          setImagePreviews([]);
+          const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
+          saveHistory({
+            model: currentModel,
+            generate_type: joyaiMode,
+            prompt: currentInput,
+            request_images: requestImagesBase64,
+            response_result: error,
+            response_images: [],
+            request_time: requestTime,
+            response_time: responseTime,
+            duration_ms: duration,
+          }).catch(err => console.error('Failed to save history:', err));
         },
       });
     } else if (joyaiMode === 'understand-image') {
       joyAIUploadImages({
-        files,
-        onComplete: (uploadedImageUrls) => {
+        files: currentFiles,
+        onComplete: async (uploadedImageUrls) => {
           joyAIUnderstandImage({
             imagePath: uploadedImageUrls[0],
-            question: input || '描述这张图片的内容',
-            onComplete: (description) => {
+            question: currentInput || '描述这张图片的内容',
+            onComplete: async (description) => {
               const duration = Date.now() - startTime;
+              const responseTime = new Date().toISOString();
               const assistantMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant' as const,
@@ -152,22 +238,66 @@ export default function JoyAIInputArea() {
               setLoading(false);
               setFiles([]);
               setImagePreviews([]);
+              const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
+              saveHistory({
+                model: currentModel,
+                generate_type: joyaiMode,
+                prompt: currentInput || '描述这张图片的内容',
+                request_images: requestImagesBase64,
+                response_result: description,
+                response_images: [],
+                request_time: requestTime,
+                response_time: responseTime,
+                duration_ms: duration,
+              }).catch(err => console.error('Failed to save history:', err));
             },
-            onError: (error) => {
+            onError: async (error) => {
+              const duration = Date.now() - startTime;
+              const responseTime = new Date().toISOString();
               setError(error);
               setLoading(false);
+              setFiles([]);
+              setImagePreviews([]);
+              const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
+              saveHistory({
+                model: currentModel,
+                generate_type: joyaiMode,
+                prompt: currentInput || '描述这张图片的内容',
+                request_images: requestImagesBase64,
+                response_result: error,
+                response_images: [],
+                request_time: requestTime,
+                response_time: responseTime,
+                duration_ms: duration,
+              }).catch(err => console.error('Failed to save history:', err));
             },
           });
         },
-        onError: (error) => {
+        onError: async (error) => {
+          const duration = Date.now() - startTime;
+          const responseTime = new Date().toISOString();
           setError(error);
           setLoading(false);
+          setFiles([]);
+          setImagePreviews([]);
+          const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
+          saveHistory({
+            model: currentModel,
+            generate_type: joyaiMode,
+            prompt: currentInput || '描述这张图片的内容',
+            request_images: requestImagesBase64,
+            response_result: error,
+            response_images: [],
+            request_time: requestTime,
+            response_time: responseTime,
+            duration_ms: duration,
+          }).catch(err => console.error('Failed to save history:', err));
         },
       });
     } else if (joyaiMode === 'spatial-transform') {
       joyAIUploadImages({
-        files,
-        onComplete: (uploadedImageUrls) => {
+        files: currentFiles,
+        onComplete: async (uploadedImageUrls) => {
           joyAISpatialTransform({
             imagePath: uploadedImageUrls[0],
             operationType: config.joyaiOperationType,
@@ -181,8 +311,9 @@ export default function JoyAIInputArea() {
             steps: config.joyaiSteps,
             guidanceScale: config.joyaiGuidanceScale,
             basesize: config.joyaiBasesize,
-            onComplete: (imageUrl) => {
+            onComplete: async (imageUrl) => {
               const duration = Date.now() - startTime;
+              const responseTime = new Date().toISOString();
               const assistantMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant' as const,
@@ -196,16 +327,60 @@ export default function JoyAIInputArea() {
               setLoading(false);
               setFiles([]);
               setImagePreviews([]);
+              const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
+              saveHistory({
+                model: currentModel,
+                generate_type: joyaiMode,
+                prompt: currentInput,
+                request_images: requestImagesBase64,
+                response_result: 'success',
+                response_images: [imageUrl],
+                request_time: requestTime,
+                response_time: responseTime,
+                duration_ms: duration,
+              }).catch(err => console.error('Failed to save history:', err));
             },
-            onError: (error) => {
+            onError: async (error) => {
+              const duration = Date.now() - startTime;
+              const responseTime = new Date().toISOString();
               setError(error);
               setLoading(false);
+              setFiles([]);
+              setImagePreviews([]);
+              const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
+              saveHistory({
+                model: currentModel,
+                generate_type: joyaiMode,
+                prompt: currentInput,
+                request_images: requestImagesBase64,
+                response_result: error,
+                response_images: [],
+                request_time: requestTime,
+                response_time: responseTime,
+                duration_ms: duration,
+              }).catch(err => console.error('Failed to save history:', err));
             },
           });
         },
-        onError: (error) => {
+        onError: async (error) => {
+          const duration = Date.now() - startTime;
+          const responseTime = new Date().toISOString();
           setError(error);
           setLoading(false);
+          setFiles([]);
+          setImagePreviews([]);
+          const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
+          saveHistory({
+            model: currentModel,
+            generate_type: joyaiMode,
+            prompt: currentInput,
+            request_images: requestImagesBase64,
+            response_result: error,
+            response_images: [],
+            request_time: requestTime,
+            response_time: responseTime,
+            duration_ms: duration,
+          }).catch(err => console.error('Failed to save history:', err));
         },
       });
     }

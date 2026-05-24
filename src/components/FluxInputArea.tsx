@@ -2,6 +2,16 @@ import { useState, useRef, useCallback } from 'react';
 import { Send, Loader2, X, Palette, Upload, Sparkles } from 'lucide-react';
 import { useStore } from '../store';
 import { generateFluxKlein, editFluxKlein, uploadImages } from '../services/api';
+import { saveHistory } from '../services/historyApi';
+
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
 
 export default function FluxInputArea() {
   const [input, setInput] = useState('');
@@ -49,6 +59,7 @@ export default function FluxInputArea() {
     if (isLoading) return;
 
     const startTime = Date.now();
+    const requestTime = new Date().toISOString();
     const userMessage = {
       id: Date.now().toString(),
       role: 'user' as const,
@@ -59,6 +70,9 @@ export default function FluxInputArea() {
 
     addMessage(userMessage);
     setLoading(true);
+    const currentInput = input;
+    const currentFiles = [...files];
+    const generateType = isTextToImage ? 'text-to-image' : 'image-to-image';
     setInput('');
     
     if (isTextToImage) {
@@ -68,8 +82,9 @@ export default function FluxInputArea() {
         height: config.fluxHeight,
         steps: config.fluxSteps,
         guidanceScale: config.fluxGuidanceScale,
-        onComplete: (imageUrl) => {
+        onComplete: async (imageUrl) => {
           const duration = Date.now() - startTime;
+          const responseTime = new Date().toISOString();
           const assistantMessage = {
             id: (Date.now() + 1).toString(),
             role: 'assistant' as const,
@@ -81,28 +96,53 @@ export default function FluxInputArea() {
           };
           addMessage(assistantMessage);
           setLoading(false);
+          const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
+          saveHistory({
+            model: currentModel,
+            generate_type: generateType,
+            prompt: currentInput,
+            request_images: requestImagesBase64,
+            response_result: 'success',
+            response_images: [imageUrl],
+            request_time: requestTime,
+            response_time: responseTime,
+            duration_ms: duration,
+          }).catch(err => console.error('Failed to save history:', err));
         },
-        onError: (error) => {
+        onError: async (error) => {
+          const duration = Date.now() - startTime;
+          const responseTime = new Date().toISOString();
           setError(error);
           setLoading(false);
+          const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
+          saveHistory({
+            model: currentModel,
+            generate_type: generateType,
+            prompt: currentInput,
+            request_images: requestImagesBase64,
+            response_result: error,
+            response_images: [],
+            request_time: requestTime,
+            response_time: responseTime,
+            duration_ms: duration,
+          }).catch(err => console.error('Failed to save history:', err));
         },
       });
     } else {
-      // First upload images
       uploadImages({
-        files,
-        onComplete: (uploadedImageUrls) => {
-          // Then edit
+        files: currentFiles,
+        onComplete: async (uploadedImageUrls) => {
           editFluxKlein({
-            prompt: input,
+            prompt: currentInput,
             imagePaths: uploadedImageUrls,
             width: config.fluxWidth,
             height: config.fluxHeight,
             steps: config.fluxSteps,
             guidanceScale: config.fluxGuidanceScale,
             strength: config.fluxStrength,
-            onComplete: (imageUrl) => {
+            onComplete: async (imageUrl) => {
               const duration = Date.now() - startTime;
+              const responseTime = new Date().toISOString();
               const assistantMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant' as const,
@@ -116,16 +156,60 @@ export default function FluxInputArea() {
               setLoading(false);
               setFiles([]);
               setImagePreviews([]);
+              const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
+              saveHistory({
+                model: currentModel,
+                generate_type: generateType,
+                prompt: currentInput,
+                request_images: requestImagesBase64,
+                response_result: 'success',
+                response_images: [imageUrl],
+                request_time: requestTime,
+                response_time: responseTime,
+                duration_ms: duration,
+              }).catch(err => console.error('Failed to save history:', err));
             },
-            onError: (error) => {
+            onError: async (error) => {
+              const duration = Date.now() - startTime;
+              const responseTime = new Date().toISOString();
               setError(error);
               setLoading(false);
+              setFiles([]);
+              setImagePreviews([]);
+              const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
+              saveHistory({
+                model: currentModel,
+                generate_type: generateType,
+                prompt: currentInput,
+                request_images: requestImagesBase64,
+                response_result: error,
+                response_images: [],
+                request_time: requestTime,
+                response_time: responseTime,
+                duration_ms: duration,
+              }).catch(err => console.error('Failed to save history:', err));
             },
           });
         },
-        onError: (error) => {
+        onError: async (error) => {
+          const duration = Date.now() - startTime;
+          const responseTime = new Date().toISOString();
           setError(error);
           setLoading(false);
+          setFiles([]);
+          setImagePreviews([]);
+          const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
+          saveHistory({
+            model: currentModel,
+            generate_type: generateType,
+            prompt: currentInput,
+            request_images: requestImagesBase64,
+            response_result: error,
+            response_images: [],
+            request_time: requestTime,
+            response_time: responseTime,
+            duration_ms: duration,
+          }).catch(err => console.error('Failed to save history:', err));
         },
       });
     }

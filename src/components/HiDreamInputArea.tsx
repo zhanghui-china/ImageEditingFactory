@@ -2,6 +2,16 @@ import { useState, useRef } from 'react';
 import { Send, Image as ImageIcon, X, Loader2 } from 'lucide-react';
 import { useStore } from '../store';
 import { hiDreamTextToImage, hiDreamEditImage, hiDreamSubjectDriven } from '../services/api';
+import { saveHistory } from '../services/historyApi';
+
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
 
 export default function HiDreamInputArea() {
   const { config, updateConfig, isLoading, setLoading, addMessage } = useStore();
@@ -36,6 +46,7 @@ export default function HiDreamInputArea() {
     }
 
     const startTime = Date.now();
+    const requestTime = new Date().toISOString();
     setLoading(true);
     addMessage({
       id: Date.now().toString(),
@@ -81,6 +92,7 @@ export default function HiDreamInputArea() {
 
       console.log('[HiDreamInputArea] Generation complete, adding message');
       const duration = Date.now() - startTime;
+      const responseTime = new Date().toISOString();
       
       addMessage({
         id: (Date.now() + 1).toString(),
@@ -94,12 +106,42 @@ export default function HiDreamInputArea() {
       
       console.log('[HiDreamInputArea] Setting loading to false');
       setLoading(false);
+      const savedInput = input;
+      const savedImages = [...uploadedImages];
       setInput('');
       setUploadedImages([]);
       setPreviewUrls([]);
       console.log('[HiDreamInputArea] Done');
+
+      const requestImagesBase64 = await Promise.all(savedImages.map(fileToBase64));
+      console.log('[HiDream] Saving history...', {
+        model: 'hidream-o1-image',
+        generate_type: config.hidreamMode,
+        prompt: savedInput,
+        requestImagesCount: requestImagesBase64.length,
+        responseImagesCount: 1,
+      });
+      saveHistory({
+        model: 'hidream-o1-image',
+        generate_type: config.hidreamMode,
+        prompt: savedInput,
+        request_images: requestImagesBase64,
+        response_result: 'success',
+        response_images: [imageUrl!],
+        request_time: requestTime,
+        response_time: responseTime,
+        duration_ms: duration,
+      }).then(id => {
+        console.log('[HiDream] History saved with ID:', id);
+      }).catch(err => {
+        console.error('[HiDream] Failed to save history:', err);
+      });
+      
     } catch (error) {
       console.error('[HiDreamInputArea] Error:', error);
+      const duration = Date.now() - startTime;
+      const responseTime = new Date().toISOString();
+      
       addMessage({
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -108,6 +150,34 @@ export default function HiDreamInputArea() {
         model: 'hidream-o1-image',
       });
       setLoading(false);
+      const savedInput = input;
+      const savedImages = [...uploadedImages];
+      setInput('');
+      setUploadedImages([]);
+      setPreviewUrls([]);
+
+      const requestImagesBase64 = await Promise.all(savedImages.map(fileToBase64));
+      console.log('[HiDream] Saving error history...', {
+        model: 'hidream-o1-image',
+        generate_type: config.hidreamMode,
+        prompt: savedInput,
+        error: error instanceof Error ? error.message : '未知错误',
+      });
+      saveHistory({
+        model: 'hidream-o1-image',
+        generate_type: config.hidreamMode,
+        prompt: savedInput,
+        request_images: requestImagesBase64,
+        response_result: `生成失败: ${error instanceof Error ? error.message : '未知错误'}`,
+        response_images: [],
+        request_time: requestTime,
+        response_time: responseTime,
+        duration_ms: duration,
+      }).then(id => {
+        console.log('[HiDream] Error history saved with ID:', id);
+      }).catch(err => {
+        console.error('[HiDream] Failed to save error history:', err);
+      });
     }
   };
 

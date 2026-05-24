@@ -8,7 +8,8 @@ import JoyAIInputArea from './components/JoyAIInputArea';
 import HiDreamInputArea from './components/HiDreamInputArea';
 import SettingsPanel from './components/SettingsPanel';
 import ImagePreviewModal from './components/ImagePreviewModal';
-import { AlertCircle } from 'lucide-react';
+import HistoryPanel from './components/HistoryPanel';
+import { AlertCircle, Clock, History } from 'lucide-react';
 
 function App() {
   const getApiKey = useStore((state) => state.getApiKey);
@@ -19,6 +20,7 @@ function App() {
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewStartIndex, setPreviewStartIndex] = useState(0);
+  const [showHistory, setShowHistory] = useState(false);
 
   const messages = getCurrentMessages();
   const isFluxKlein = currentModel === 'flux-klein';
@@ -109,41 +111,66 @@ function App() {
         </aside>
 
         <main className="flex-1 flex flex-col overflow-hidden">
-          <ChatInterface onPreviewImages={handlePreviewImages} />
-
-          {previewImages.length > 0 && (
-            <div className="px-6 pb-2">
-              <button
-                onClick={openPreview}
-                className="flex items-center gap-2 px-4 py-2 bg-u1-orange/20 text-u1-orange rounded-lg hover:bg-u1-orange/30 transition-colors text-sm"
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                  <circle cx="9" cy="9" r="2" />
-                  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-                </svg>
-                查看生成的图片 ({previewImages.length})
-              </button>
+          {showHistory ? (
+            <div className="flex-1 overflow-hidden">
+              <HistoryPanel onBack={() => setShowHistory(false)} />
             </div>
-          )}
-
-          {isFluxKlein ? (
-            <FluxInputArea />
-          ) : isJoyAI ? (
-            <JoyAIInputArea />
-          ) : isHiDream ? (
-            <HiDreamInputArea />
           ) : (
-            <InputArea />
+            <>
+              <div className="flex items-center justify-between px-6 py-2 bg-sidebar-bg border-b border-card-bg">
+                <div className="text-sm text-text-muted">
+                  {currentModel === 'flux-klein' && 'FLUX.2 Klein 9B'}
+                  {currentModel === 'joyai-image-edit' && 'JoyAI 图像编辑'}
+                  {currentModel === 'hidream-o1-image' && 'HiDream-O1-Image'}
+                  {currentModel === 'sensenova-6.7-flash-lite' && 'Sensenova 6.7B'}
+                  {currentModel === 'sensenova-vlist5' && 'Sensenova V5'}
+                  {currentModel === 'sensenova-u1-fast' && 'Sensenova U1-Fast'}
+                  {currentModel === 'deepseek-chat' && 'DeepSeek V4'}
+                  {currentModel === 'deepseek-reasoner' && 'DeepSeek R1'}
+                </div>
+                <button
+                  onClick={() => setShowHistory(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-deep-bg hover:bg-card-bg rounded-lg transition-colors text-sm"
+                >
+                  <History size={16} className="text-u1-orange" />
+                  <span className="text-text-primary">历史查询</span>
+                </button>
+              </div>
+              <ChatInterface onPreviewImages={handlePreviewImages} />
+              {previewImages.length > 0 && (
+                <div className="px-6 pb-2">
+                  <button
+                    onClick={openPreview}
+                    className="flex items-center gap-2 px-4 py-2 bg-u1-orange/20 text-u1-orange rounded-lg hover:bg-u1-orange/30 transition-colors text-sm"
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                      <circle cx="9" cy="9" r="2" />
+                      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                    </svg>
+                    查看生成的图片 ({previewImages.length})
+                  </button>
+                </div>
+              )}
+              {isFluxKlein ? (
+                <FluxInputArea />
+              ) : isJoyAI ? (
+                <JoyAIInputArea />
+              ) : isHiDream ? (
+                <HiDreamInputArea />
+              ) : (
+                <InputArea />
+              )}
+            </>
           )}
         </main>
       </div>

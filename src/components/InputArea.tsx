@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { Send, Image, Loader2, X } from 'lucide-react';
 import { useStore } from '../store';
 import { sendChatMessage, generateImage } from '../services/api';
+import { saveHistory } from '../services/historyApi';
 
 export default function InputArea() {
   const [input, setInput] = useState('');
@@ -23,7 +24,7 @@ export default function InputArea() {
   const supportsImages = currentModel === 'sensenova-6.7-flash-lite';
   const isU1Fast = currentModel === 'sensenova-u1-fast';
 
-  const handleImageUpload = useCallback((files: FileList | null) => {
+    const handleImageUpload = useCallback((files: FileList | null) => {
     if (!files) return;
 
     Array.from(files).forEach((file) => {
@@ -53,6 +54,10 @@ export default function InputArea() {
     }
 
     const startTime = Date.now();
+    const requestTime = new Date().toISOString();
+    const currentInput = input;
+    const currentImages = [...images];
+    const currentModelName = currentModel;
 
     if (isU1Fast) {
       if (!input.trim()) return;
@@ -68,29 +73,55 @@ export default function InputArea() {
       addMessage(userMessage);
       setLoading(true);
       setInput('');
+      setImages([]);
 
       generateImage({
         apiKey,
         prompt: input,
         size: config.imageSize,
         n: config.imageCount,
-        onComplete: (images) => {
+        onComplete: async (generatedImages) => {
           const duration = Date.now() - startTime;
+          const responseTime = new Date().toISOString();
           const assistantMessage = {
             id: (Date.now() + 1).toString(),
             role: 'assistant' as const,
             content: '',
-            images,
+            images: generatedImages,
             timestamp: Date.now(),
             model: currentModel,
             duration: duration,
           };
           addMessage(assistantMessage);
           setLoading(false);
+          saveHistory({
+            model: currentModelName,
+            generate_type: 'text-to-image',
+            prompt: currentInput,
+            request_images: currentImages,
+            response_result: 'success',
+            response_images: generatedImages,
+            request_time: requestTime,
+            response_time: responseTime,
+            duration_ms: duration,
+          }).catch(err => console.error('Failed to save history:', err));
         },
-        onError: (error) => {
+        onError: async (error) => {
+          const duration = Date.now() - startTime;
+          const responseTime = new Date().toISOString();
           setError(error);
           setLoading(false);
+          saveHistory({
+            model: currentModelName,
+            generate_type: 'text-to-image',
+            prompt: currentInput,
+            request_images: currentImages,
+            response_result: error,
+            response_images: [],
+            request_time: requestTime,
+            response_time: responseTime,
+            duration_ms: duration,
+          }).catch(err => console.error('Failed to save history:', err));
         },
       });
     } else {
@@ -98,7 +129,7 @@ export default function InputArea() {
         id: Date.now().toString(),
         role: 'user' as const,
         content: input,
-        images: images.length > 0 ? images : undefined,
+        images: currentImages.length > 0 ? currentImages : undefined,
         timestamp: Date.now(),
         model: currentModel,
       };
@@ -110,7 +141,6 @@ export default function InputArea() {
 
       const newMessages = [...messages, userMessage];
 
-      // 先添加一条空的 assistant 消息
       const assistantMessageId = (Date.now() + 1).toString();
       const emptyAssistantMessage = {
         id: assistantMessageId,
@@ -130,14 +160,12 @@ export default function InputArea() {
         onChunk: (content, reasoning) => {
           updateStreamingMessage(content, reasoning);
         },
-        onComplete: () => {
+        onComplete: async () => {
           const duration = Date.now() - startTime;
-          // 更新最后一条消息，添加 duration
+          const responseTime = new Date().toISOString();
           const currentMessages = useStore.getState().getCurrentMessages();
           const lastMessage = currentMessages[currentMessages.length - 1];
           if (lastMessage && lastMessage.role === 'assistant') {
-            // 由于 updateStreamingMessage 会更新消息，我们需要在 store 中添加 duration
-            // 但目前的实现不会保存 duration，所以这里我们手动更新
             useStore.setState({
               messagesByModel: {
                 ...useStore.getState().messagesByModel,
@@ -150,10 +178,35 @@ export default function InputArea() {
             });
           }
           setLoading(false);
+          const assistantContent = lastMessage?.content || '';
+          saveHistory({
+            model: currentModelName,
+            generate_type: 'chat',
+            prompt: currentInput,
+            request_images: currentImages,
+            response_result: assistantContent,
+            response_images: [],
+            request_time: requestTime,
+            response_time: responseTime,
+            duration_ms: duration,
+          }).catch(err => console.error('Failed to save history:', err));
         },
-        onError: (error) => {
+        onError: async (error) => {
+          const duration = Date.now() - startTime;
+          const responseTime = new Date().toISOString();
           setError(error);
           setLoading(false);
+          saveHistory({
+            model: currentModelName,
+            generate_type: 'chat',
+            prompt: currentInput,
+            request_images: currentImages,
+            response_result: error,
+            response_images: [],
+            request_time: requestTime,
+            response_time: responseTime,
+            duration_ms: duration,
+          }).catch(err => console.error('Failed to save history:', err));
         },
       });
     }
