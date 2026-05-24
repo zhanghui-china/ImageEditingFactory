@@ -1,0 +1,210 @@
+import os
+import uuid
+import time
+import torch
+import requests
+import io
+from datetime import datetime
+from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from typing import List, Optional
+from PIL import Image
+from diffusers import Flux2Pipeline
+from huggingface_hub import get_token
+
+MODEL_PATH = "/home1/zhanghui/models/black-forest-labs/FLUX.2-klein-9B"
+#MODEL_PATH = os.environ.get("FLUX_MODEL_PATH", "black-forest-labs/FLUX.2-dev")
+OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "generated_images")
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploaded_images")
+DEVICE = "cuda:0"
+TORCH_DTYPE = torch.bfloat16
+
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+app = FastAPI(title="Flux2 Image Generation & Editing API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.mount("/images", StaticFiles(directory=OUTPUT_DIR), name="images")
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
+pipe = None
+
+
+def remote_text_encoder(prompts: str) -> torch.Tensor:
+    response = requests.post(
+        "https://remote-text-encoder-flux-2.huggingface.co/predict",
+        json={"prompt": prompts},
+        headers={
+            "Authorization": f"Bearer {get_token()}",
+            "Content-Type": "application/json",
+        },
+    )
+    assert response.status_code == 200, f"Remote text encoder failed: {response.status_code}"
+    prompt_embeds = torch.load(io.BytesIO(response.content), map_location=DEVICE)
+    return prompt_embeds.to(DEVICE)
+
+
+class GenerateRequest(BaseModel):
+    prompt: str
+    height: int = 1024
+    width: int = 1024
+    guidance_scale: float = 4.0
+    num_inference_steps: int = 50
+    seed: int | None = None
+
+
+class EditRequest(BaseModel):
+    prompt: str
+    image_paths: List[str]
+    height: int = 1024
+    width: int = 1024
+    guidance_scale: float = 4.0
+    num_inference_steps: int = 50
+    seed: int | None = None
+    strength: float = 0.8
+
+
+@app.on_event("startup")
+def load_model():
+    global pipe
+    print("Loading Flux2 model...")
+    pipe = Flux2Pipeline.from_pretrained(
+        MODEL_PATH,
+        text_encoder=None,
+        torch_dtype=TORCH_DTYPE,
+    ).to(DEVICE)
+    print("Model loaded successfully.")
+
+
+@app.post("/upload-images")
+async def upload_images(files: List[UploadFile] = File(...)):
+    uploaded_files = []
+    for file in files:
+        if not file.content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail=f"File {file.filename} is not an image")
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        unique_id = uuid.uuid4().hex[:6]
+        filename = f"upload_{timestamp}_{unique_id}_{file.filename}"
+        filepath = os.path.join(UPLOAD_DIR, filename)
+
+        contents = await file.read()
+        with open(filepath, "wb") as f:
+            f.write(contents)
+
+        uploaded_files.append({
+            "filename": filename,
+            "url": f"/uploads/{filename}",
+        })
+
+    return {"uploaded_files": uploaded_files}
+
+
+@app.post("/generate")
+def generate_image(req: GenerateRequest):
+    if pipe is None:
+        raise HTTPException(status_code=503, detail="Model is still loading, please wait.")
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    unique_id = uuid.uuid4().hex[:6]
+    filename = f"flux_{timestamp}_{unique_id}.png"
+    filepath = os.path.join(OUTPUT_DIR, filename)
+
+    generator = torch.Generator(device=DEVICE)
+    if req.seed is not None:
+        generator = generator.manual_seed(req.seed)
+    else:
+        generator = generator.manual_seed(int(time.time() * 1000) % (2**32))
+
+    #prompt_embeds = remote_text_encoder(req.prompt)
+
+    image = pipe(
+        prompt_embeds=req.prompt,
+        height=req.height,
+        width=req.width,
+        guidance_scale=req.guidance_scale,
+        num_inference_steps=req.num_inference_steps,
+        generator=generator,
+    ).images[0]
+
+    image.save(filepath)
+
+    return {
+        "filename": filename,
+        "url": f"/images/{filename}",
+        "prompt": req.prompt,
+        "seed": req.seed,
+    }
+
+
+@app.post("/edit")
+def edit_image(req: EditRequest):
+    if pipe is None:
+        raise HTTPException(status_code=503, detail="Model is still loading, please wait.")
+
+    if len(req.image_paths) == 0:
+        raise HTTPException(status_code=400, detail="No images provided for editing")
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    unique_id = uuid.uuid4().hex[:6]
+    filename = f"flux_edit_{timestamp}_{unique_id}.png"
+    filepath = os.path.join(OUTPUT_DIR, filename)
+
+    generator = torch.Generator(device=DEVICE)
+    if req.seed is not None:
+        generator = generator.manual_seed(req.seed)
+    else:
+        generator = generator.manual_seed(int(time.time() * 1000) % (2**32))
+
+    input_images = []
+    for img_path in req.image_paths:
+        relative_name = img_path.replace("/uploads/", "")
+        full_path = os.path.join(UPLOAD_DIR, relative_name)
+        if not os.path.exists(full_path):
+            raise HTTPException(status_code=404, detail=f"Image not found: {relative_name}")
+        img = Image.open(full_path).convert("RGB")
+        input_images.append(img)
+
+    #prompt_embeds = remote_text_encoder(req.prompt)
+
+    pipe_kwargs = {
+        "prompt_embeds": req.prompt,
+        "image": input_images,
+        "height": req.height,
+        "width": req.width,
+        "guidance_scale": req.guidance_scale,
+        "num_inference_steps": req.num_inference_steps,
+        "generator": generator,
+    }
+
+    image = pipe(**pipe_kwargs).images[0]
+
+    image.save(filepath)
+
+    return {
+        "filename": filename,
+        "url": f"/images/{filename}",
+        "prompt": req.prompt,
+        "source_images": req.image_paths,
+        "seed": req.seed,
+    }
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "model_loaded": pipe is not None}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8787)

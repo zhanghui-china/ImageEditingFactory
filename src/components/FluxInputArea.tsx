@@ -1,0 +1,270 @@
+import { useState, useRef, useCallback } from 'react';
+import { Send, Loader2, X, Palette, Upload, Sparkles } from 'lucide-react';
+import { useStore } from '../store';
+import { generateFluxKlein, editFluxKlein, uploadImages } from '../services/api';
+
+export default function FluxInputArea() {
+  const [input, setInput] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const config = useStore((state) => state.config);
+  const isLoading = useStore((state) => state.isLoading);
+  const fluxMode = useStore((state) => state.fluxMode);
+  const currentModel = useStore((state) => state.currentModel);
+  const setFluxMode = useStore((state) => state.setFluxMode);
+  const addMessage = useStore((state) => state.addMessage);
+  const setLoading = useStore((state) => state.setLoading);
+  const setError = useStore((state) => state.setError);
+
+  const isTextToImage = fluxMode === 'text-to-image';
+
+  const handleFileSelect = useCallback((selectedFiles: FileList | null) => {
+    if (!selectedFiles) return;
+    
+    const newFiles = Array.from(selectedFiles).filter(file => file.type.startsWith('image/'));
+    setFiles(prev => [...prev, ...newFiles]);
+    
+    // Create previews
+    newFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreviews(prev => [...prev, e.target?.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  }, []);
+
+  const removeFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+    if (!isTextToImage && files.length === 0) return;
+    if (isLoading) return;
+
+    const userMessage = {
+      id: Date.now().toString(),
+      role: 'user' as const,
+      content: input,
+      timestamp: Date.now(),
+      model: currentModel,
+    };
+
+    addMessage(userMessage);
+    setLoading(true);
+    setInput('');
+    
+    if (isTextToImage) {
+      generateFluxKlein({
+        prompt: input,
+        width: config.fluxWidth,
+        height: config.fluxHeight,
+        steps: config.fluxSteps,
+        guidanceScale: config.fluxGuidanceScale,
+        onComplete: (imageUrl) => {
+          const assistantMessage = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant' as const,
+            content: '',
+            images: [imageUrl],
+            timestamp: Date.now(),
+            model: currentModel,
+          };
+          addMessage(assistantMessage);
+          setLoading(false);
+        },
+        onError: (error) => {
+          setError(error);
+          setLoading(false);
+        },
+      });
+    } else {
+      // First upload images
+      uploadImages({
+        files,
+        onComplete: (uploadedImageUrls) => {
+          // Then edit
+          editFluxKlein({
+            prompt: input,
+            imagePaths: uploadedImageUrls,
+            width: config.fluxWidth,
+            height: config.fluxHeight,
+            steps: config.fluxSteps,
+            guidanceScale: config.fluxGuidanceScale,
+            strength: config.fluxStrength,
+            onComplete: (imageUrl) => {
+              const assistantMessage = {
+                id: (Date.now() + 1).toString(),
+                role: 'assistant' as const,
+                content: '',
+                images: [imageUrl],
+                timestamp: Date.now(),
+                model: currentModel,
+              };
+              addMessage(assistantMessage);
+              setLoading(false);
+              setFiles([]);
+              setImagePreviews([]);
+            },
+            onError: (error) => {
+              setError(error);
+              setLoading(false);
+            },
+          });
+        },
+        onError: (error) => {
+          setError(error);
+          setLoading(false);
+        },
+      });
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    handleFileSelect(e.dataTransfer.files);
+  };
+
+  return (
+    <div className="border-t border-card-bg bg-sidebar-bg p-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Mode Selector */}
+        <div className="flex mb-4 bg-deep-bg rounded-lg p-1">
+          <button
+            onClick={() => setFluxMode('text-to-image')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+              isTextToImage
+                ? 'bg-emerald-500/20 text-emerald-400'
+                : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <Palette size={16} />
+              文生图
+            </div>
+          </button>
+          <button
+            onClick={() => setFluxMode('image-to-image')}
+            className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+              !isTextToImage
+                ? 'bg-emerald-500/20 text-emerald-400'
+                : 'text-text-muted hover:text-text-primary'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <Sparkles size={16} />
+              图像编辑
+            </div>
+          </button>
+        </div>
+
+        {/* Image Preview Section (only for image-to-image) */}
+        {!isTextToImage && (
+          <div className="mb-4">
+            {imagePreviews.length > 0 ? (
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {imagePreviews.map((img, idx) => (
+                  <div key={idx} className="relative flex-shrink-0">
+                    <img
+                      src={img}
+                      alt={`Upload ${idx + 1}`}
+                      className="w-24 h-24 object-cover rounded-lg"
+                    />
+                    <button
+                      onClick={() => removeFile(idx)}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-error-red text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-lg p-4 text-center transition-all ${
+                  isDragging
+                    ? 'border-emerald-500 bg-emerald-500/10'
+                    : 'border-card-bg hover:border-text-muted'
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => handleFileSelect(e.target.files)}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-text-secondary hover:text-emerald-400 transition-colors flex items-center gap-2 mx-auto"
+                >
+                  <Upload size={20} />
+                  <span>点击上传或拖拽图片到此处</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Input Area */}
+        <div className="flex gap-3">
+          <div className="flex-1 relative">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={
+                isTextToImage
+                  ? '描述你想要生成的图片...'
+                  : '描述你想要如何编辑图片...'
+              }
+              className="w-full bg-deep-bg border border-card-bg rounded-xl px-4 py-3 pr-12 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-none transition-all"
+              rows={1}
+              style={{ minHeight: '48px', maxHeight: '120px' }}
+              disabled={isLoading}
+            />
+          </div>
+
+          <button
+            onClick={handleSend}
+            disabled={
+              isLoading || 
+              !input.trim() || 
+              (!isTextToImage && files.length === 0)
+            }
+            className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+          >
+            {isLoading ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Send size={18} />
+            )}
+            <span className="hidden sm:inline">生成</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
