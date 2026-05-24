@@ -7,13 +7,18 @@ from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import List, Optional, Union
+from typing import List, Optional
 from PIL import Image
+from io import BytesIO
 
-# 配置 JoyAI 模型路径
+JOYAI_MODEL_ID = os.environ.get(
+    "JOYAI_MODEL_ID",
+    "jdopensource/JoyAI-Image-Edit-Diffusers"
+)
+
 JOYAI_MODEL_ROOT = os.environ.get(
     "JOYAI_MODEL_ROOT",
-    "/home1/zhanghui/models/jd-opensource/JoyAI-Image-Edit"
+    None
 )
 
 OUTPUT_DIR = os.path.join(
@@ -41,83 +46,129 @@ app.add_middleware(
 app.mount("/joyai-images", StaticFiles(directory=OUTPUT_DIR), name="joyai-images")
 app.mount("/joyai-uploads", StaticFiles(directory=UPLOAD_DIR), name="joyai-uploads")
 
-# 全局变量存储模型
-joyai_model = None
+joyai_pipeline = None
+pipeline_loaded = False
 
 
-# ====================================
-# 请求数据模型
-# ====================================
-
-class BaseGenerationRequest(BaseModel):
+class TextToImageRequest(BaseModel):
     prompt: str
+    negative_prompt: str = ""
     seed: Optional[int] = None
     steps: int = 30
     guidance_scale: float = 4.0
-    basesize: int = 1024
+    height: int = 1024
+    width: int = 1024
 
 
-class TextToImageRequest(BaseGenerationRequest):
-    negative_prompt: Optional[str] = ""
-
-
-class ImageEditRequest(BaseGenerationRequest):
+class ImageEditRequest(BaseModel):
+    prompt: str
     image_path: str
+    negative_prompt: str = ""
+    seed: Optional[int] = None
+    steps: int = 30
+    guidance_scale: float = 4.0
     strength: float = 0.8
 
 
 class ImageUnderstandingRequest(BaseModel):
     image_path: str
-    question: Optional[str] = "描述这张图片的内容"
+    question: str = "描述这张图片的内容"
+    max_new_tokens: int = 1024
+    temperature: float = 0.7
 
 
 class SpatialTransformRequest(BaseModel):
     image_path: str
-    operation_type: str  # "move", "rotate", "zoom", "pan", "tilt"
-    object_prompt: Optional[str] = ""  # 需要操作的物体描述
-    # 移动操作参数
-    move_dx: Optional[float] = 0.0  # 水平移动距离
-    move_dy: Optional[float] = 0.0  # 垂直移动距离
-    # 旋转操作参数
-    rotate_angle: Optional[float] = 0.0  # 旋转角度
-    # 缩放操作参数
-    zoom_factor: Optional[float] = 1.0  # 缩放倍数
-    # 平移/倾斜/镜头参数
-    pan_angle: Optional[float] = 0.0
-    tilt_angle: Optional[float] = 0.0
+    operation_type: str
+    object_prompt: Optional[str] = ""
+    prompt: Optional[str] = None
     seed: Optional[int] = None
     steps: int = 30
     guidance_scale: float = 4.0
-    basesize: int = 1024
+    move_dx: Optional[float] = 0.0
+    move_dy: Optional[float] = 0.0
+    rotate_angle: Optional[float] = 0.0
+    zoom_factor: Optional[float] = 1.0
+    zoom_direction: Optional[str] = "unchanged"
+    pan_angle: Optional[float] = 0.0
+    tilt_angle: Optional[float] = 0.0
+    view: Optional[str] = None
 
 
-# ====================================
-# 模型加载
-# ====================================
+def build_spatial_prompt(req: SpatialTransformRequest) -> str:
+    if req.prompt:
+        return req.prompt
+    
+    object_desc = req.object_prompt.strip() if req.object_prompt else "object"
+    
+    if req.operation_type == "move":
+        return f"Move the {object_desc} into the red box and finally remove the red box."
+    
+    elif req.operation_type == "rotate":
+        view_map = {
+            "front": "front",
+            "right": "right", 
+            "left": "left",
+            "rear": "rear",
+            "back": "rear",
+            "front_right": "front right",
+            "front_left": "front left",
+            "rear_right": "rear right",
+            "rear_left": "rear left",
+        }
+        view = view_map.get(req.view or "front", "front")
+        return f"Rotate the {object_desc} to show the {view} side view."
+    
+    elif req.operation_type == "zoom":
+        direction = req.zoom_direction or "unchanged"
+        return f"Move the camera.\n- Camera rotation: Yaw 0°, Pitch 0°.\n- Camera zoom: {direction}.\n- Keep the 3D scene static; only change the viewpoint."
+    
+    elif req.operation_type == "pan-tilt":
+        yaw = req.pan_angle or 0
+        pitch = req.tilt_angle or 0
+        direction = req.zoom_direction or "unchanged"
+        return f"Move the camera.\n- Camera rotation: Yaw {yaw}°, Pitch {pitch}°.\n- Camera zoom: {direction}.\n- Keep the 3D scene static; only change the viewpoint."
+    
+    return f"Edit the image: {object_desc}"
+
 
 @app.on_event("startup")
-def load_model():
-    global joyai_model
-    print("Loading JoyAI Image Edit model...")
+def load_pipeline():
+    global joyai_pipeline, pipeline_loaded
+    print("Loading JoyAI Image Edit pipeline (Diffusers)...")
+    print(f"Model ID: {JOYAI_MODEL_ID}")
+    
     try:
-        # 这里我们使用占位符，实际根据 JoyAI 官方实现来加载
-        # 实际项目中，根据 JoyAI 的 inference.py 来集成
-        print(f"Model root: {JOYAI_MODEL_ROOT}")
+        from diffusers import JoyImageEditPipeline
         
-        # 示例加载逻辑（需要根据实际 JoyAI 的接口调整）
-        # from joyai import JoyAIPipeline
-        # joyai_model = JoyAIPipeline.from_pretrained(JOYAI_MODEL_ROOT)
+        if JOYAI_MODEL_ROOT and os.path.exists(JOYAI_MODEL_ROOT):
+            print(f"Loading from local path: {JOYAI_MODEL_ROOT}")
+            joyai_pipeline = JoyImageEditPipeline.from_pretrained(
+                JOYAI_MODEL_ROOT,
+                torch_dtype=torch.bfloat16
+            )
+        else:
+            print(f"Loading from HuggingFace hub: {JOYAI_MODEL_ID}")
+            joyai_pipeline = JoyImageEditPipeline.from_pretrained(
+                JOYAI_MODEL_ID,
+                torch_dtype=torch.bfloat16
+            )
         
-        joyai_model = "loaded"  # 占位符
-        print("JoyAI model loaded successfully.")
+        if torch.cuda.is_available():
+            joyai_pipeline = joyai_pipeline.to("cuda")
+            print("Pipeline moved to CUDA")
+        else:
+            print("CUDA not available, using CPU")
+        
+        pipeline_loaded = True
+        print("JoyAI Image Edit pipeline loaded successfully!")
+        
     except Exception as e:
-        print(f"Error loading model: {e}")
-        joyai_model = None
+        print(f"Error loading pipeline: {e}")
+        import traceback
+        traceback.print_exc()
+        pipeline_loaded = False
 
-
-# ====================================
-# 工具函数
-# ====================================
 
 def get_timestamp_filename(prefix="joyai", suffix="png"):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -133,18 +184,19 @@ def load_image_from_path(image_path: str):
     return Image.open(full_path).convert("RGB")
 
 
-def get_generator(seed: Optional[int] = None):
-    generator = torch.Generator(device="cpu")
+def get_generator(seed: Optional[int] = None, device: str = "cuda"):
+    if torch.cuda.is_available() and device == "cuda":
+        generator = torch.Generator(device="cuda")
+    else:
+        generator = torch.Generator(device="cpu")
+    
     if seed is not None:
         generator = generator.manual_seed(seed)
     else:
         generator = generator.manual_seed(int(time.time() * 1000) % (2**32))
+    
     return generator
 
-
-# ====================================
-# 基础接口
-# ====================================
 
 @app.post("/joyai/upload-images")
 async def upload_images(files: List[UploadFile] = File(...)):
@@ -174,265 +226,416 @@ async def upload_images(files: List[UploadFile] = File(...)):
 def health_check():
     return {
         "status": "ok",
-        "model_loaded": joyai_model is not None,
-        "model_root": JOYAI_MODEL_ROOT
+        "pipeline_loaded": pipeline_loaded,
+        "model_id": JOYAI_MODEL_ID,
+        "model_root": JOYAI_MODEL_ROOT,
+        "cuda_available": torch.cuda.is_available(),
+        "cuda_device_count": torch.cuda.device_count() if torch.cuda.is_available() else 0
     }
 
-
-# ====================================
-# 1. 文生图
-# ====================================
 
 @app.post("/joyai/text-to-image")
 def text_to_image(req: TextToImageRequest):
-    if joyai_model is None:
-        raise HTTPException(status_code=503, detail="Model is still loading, please wait.")
+    if not pipeline_loaded or joyai_pipeline is None:
+        raise HTTPException(status_code=503, detail="Pipeline is still loading, please wait.")
+    
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    generator = get_generator(req.seed, device)
+    
+    print(f"[T2I] Prompt: {req.prompt}")
+    print(f"[T2I] Steps: {req.steps}, Guidance: {req.guidance_scale}")
+    
+    try:
+        output = joyai_pipeline(
+            prompt=req.prompt,
+            negative_prompt=req.negative_prompt if req.negative_prompt else None,
+            height=req.height,
+            width=req.width,
+            num_inference_steps=req.steps,
+            guidance_scale=req.guidance_scale,
+            generator=generator,
+        )
+        
+        output_image = output.images[0]
+        
+        filename = get_timestamp_filename("joyai_t2i")
+        filepath = os.path.join(OUTPUT_DIR, filename)
+        output_image.save(filepath)
+        
+        return {
+            "filename": filename,
+            "url": f"/joyai-images/{filename}",
+            "prompt": req.prompt,
+            "seed": req.seed,
+            "operation": "text-to-image",
+            "height": req.height,
+            "width": req.width
+        }
+        
+    except Exception as e:
+        print(f"Error in text-to-image: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
 
-    filename = get_timestamp_filename("joyai_t2i")
-    filepath = os.path.join(OUTPUT_DIR, filename)
-
-    # 这里需要根据 JoyAI 的实际接口调用
-    # 示例逻辑：
-    # image = joyai_model.text_to_image(
-    #     prompt=req.prompt,
-    #     negative_prompt=req.negative_prompt,
-    #     steps=req.steps,
-    #     guidance_scale=req.guidance_scale,
-    #     basesize=req.basesize,
-    #     seed=req.seed
-    # )
-
-    # 临时占位 - 实际项目需要替换为真实的模型调用
-    image = Image.new('RGB', (req.basesize, req.basesize), color='gray')
-    from PIL import ImageDraw, ImageFont
-    draw = ImageDraw.Draw(image)
-    draw.text((50, 50), f"JoyAI T2I: {req.prompt[:30]}", fill='white')
-
-    image.save(filepath)
-
-    return {
-        "filename": filename,
-        "url": f"/joyai-images/{filename}",
-        "prompt": req.prompt,
-        "seed": req.seed,
-        "operation": "text-to-image"
-    }
-
-
-# ====================================
-# 2. 图像编辑
-# ====================================
 
 @app.post("/joyai/edit-image")
 def edit_image(req: ImageEditRequest):
-    if joyai_model is None:
-        raise HTTPException(status_code=503, detail="Model is still loading, please wait.")
-
+    if not pipeline_loaded or joyai_pipeline is None:
+        raise HTTPException(status_code=503, detail="Pipeline is still loading, please wait.")
+    
     input_image = load_image_from_path(req.image_path)
+    
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    generator = get_generator(req.seed, device)
+    
+    print(f"[Edit] Prompt: {req.prompt}")
+    print(f"[Edit] Image: {req.image_path}")
+    print(f"[Edit] Steps: {req.steps}, Guidance: {req.guidance_scale}, Strength: {req.strength}")
+    
+    try:
+        output = joyai_pipeline(
+            image=input_image,
+            prompt=req.prompt,
+            negative_prompt=req.negative_prompt if req.negative_prompt else None,
+            num_inference_steps=req.steps,
+            guidance_scale=req.guidance_scale,
+            strength=req.strength,
+            generator=generator,
+        )
+        
+        output_image = output.images[0]
+        
+        filename = get_timestamp_filename("joyai_edit")
+        filepath = os.path.join(OUTPUT_DIR, filename)
+        output_image.save(filepath)
+        
+        return {
+            "filename": filename,
+            "url": f"/joyai-images/{filename}",
+            "prompt": req.prompt,
+            "source_image": req.image_path,
+            "seed": req.seed,
+            "operation": "edit-image"
+        }
+        
+    except Exception as e:
+        print(f"Error in edit-image: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Editing failed: {str(e)}")
 
-    filename = get_timestamp_filename("joyai_edit")
-    filepath = os.path.join(OUTPUT_DIR, filename)
-
-    # 示例逻辑：
-    # image = joyai_model.edit_image(
-    #     image=input_image,
-    #     prompt=req.prompt,
-    #     strength=req.strength,
-    #     steps=req.steps,
-    #     guidance_scale=req.guidance_scale,
-    #     basesize=req.basesize,
-    #     seed=req.seed
-    # )
-
-    # 临时占位
-    image = Image.new('RGB', input_image.size, color='lightblue')
-    image.paste(input_image, (0, 0))
-    from PIL import ImageDraw
-    draw = ImageDraw.Draw(image)
-    draw.text((50, 50), f"JoyAI Edit: {req.prompt[:30]}", fill='black')
-
-    image.save(filepath)
-
-    return {
-        "filename": filename,
-        "url": f"/joyai-images/{filename}",
-        "prompt": req.prompt,
-        "source_image": req.image_path,
-        "seed": req.seed,
-        "operation": "edit-image"
-    }
-
-
-# ====================================
-# 3. 图像理解
-# ====================================
 
 @app.post("/joyai/understand-image")
 def understand_image(req: ImageUnderstandingRequest):
-    if joyai_model is None:
-        raise HTTPException(status_code=503, detail="Model is still loading, please wait.")
-
+    if not pipeline_loaded or joyai_pipeline is None:
+        raise HTTPException(status_code=503, detail="Pipeline is still loading, please wait.")
+    
     input_image = load_image_from_path(req.image_path)
+    
+    print(f"[Understand] Question: {req.question}")
+    print(f"[Understand] Image: {req.image_path}")
+    
+    try:
+        output = joyai_pipeline(
+            image=input_image,
+            prompt=req.question,
+            num_inference_steps=min(req.max_new_tokens // 4, 40),
+            guidance_scale=1.0,
+            max_new_tokens=req.max_new_tokens,
+            output_type="text"
+        )
+        
+        description = ""
+        if hasattr(output, 'text'):
+            description = output.text[0] if isinstance(output.text, list) else output.text
+        elif hasattr(output, 'sequences'):
+            description = output.sequences[0] if isinstance(output.sequences, list) else output.sequences
+        
+        if not description:
+            description = "[Model did not return text output. Image understanding may require a separate understanding model.]"
+        
+        return {
+            "image_path": req.image_path,
+            "question": req.question,
+            "description": description,
+            "operation": "understand-image"
+        }
+        
+    except Exception as e:
+        print(f"Error in understand-image: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Understanding failed: {str(e)}")
 
-    # 示例逻辑：
-    # description = joyai_model.understand_image(
-    #     image=input_image,
-    #     question=req.question
-    # )
-
-    # 临时占位
-    description = "这是一张示例图片。图片中包含一些物体，场景看起来很有趣。"
-
-    return {
-        "image_path": req.image_path,
-        "question": req.question,
-        "description": description,
-        "operation": "understand-image"
-    }
-
-
-# ====================================
-# 4. 空间变换
-# ====================================
 
 @app.post("/joyai/spatial-transform")
 def spatial_transform(req: SpatialTransformRequest):
-    if joyai_model is None:
-        raise HTTPException(status_code=503, detail="Model is still loading, please wait.")
-
+    if not pipeline_loaded or joyai_pipeline is None:
+        raise HTTPException(status_code=503, detail="Pipeline is still loading, please wait.")
+    
     input_image = load_image_from_path(req.image_path)
+    
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    generator = get_generator(req.seed, device)
+    
+    prompt = build_spatial_prompt(req)
+    
+    print(f"[Spatial] Operation: {req.operation_type}")
+    print(f"[Spatial] Prompt: {prompt}")
+    print(f"[Spatial] Image: {req.image_path}")
+    
+    try:
+        output = joyai_pipeline(
+            image=input_image,
+            prompt=prompt,
+            num_inference_steps=req.steps,
+            guidance_scale=req.guidance_scale,
+            generator=generator,
+        )
+        
+        output_image = output.images[0]
+        
+        filename = get_timestamp_filename(f"joyai_{req.operation_type}")
+        filepath = os.path.join(OUTPUT_DIR, filename)
+        output_image.save(filepath)
+        
+        return {
+            "filename": filename,
+            "url": f"/joyai-images/{filename}",
+            "source_image": req.image_path,
+            "operation": "spatial-transform",
+            "operation_type": req.operation_type,
+            "prompt": prompt,
+            "seed": req.seed
+        }
+        
+    except Exception as e:
+        print(f"Error in spatial-transform: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Spatial transform failed: {str(e)}")
 
-    filename = get_timestamp_filename(f"joyai_{req.operation_type}")
-    filepath = os.path.join(OUTPUT_DIR, filename)
-
-    # 根据不同操作类型处理
-    # 示例逻辑：
-    # image = joyai_model.spatial_transform(
-    #     image=input_image,
-    #     operation_type=req.operation_type,
-    #     object_prompt=req.object_prompt,
-    #     move_dx=req.move_dx,
-    #     move_dy=req.move_dy,
-    #     rotate_angle=req.rotate_angle,
-    #     zoom_factor=req.zoom_factor,
-    #     pan_angle=req.pan_angle,
-    #     tilt_angle=req.tilt_angle,
-    #     steps=req.steps,
-    #     guidance_scale=req.guidance_scale,
-    #     basesize=req.basesize,
-    #     seed=req.seed
-    # )
-
-    # 临时占位
-    image = Image.new('RGB', input_image.size, color='lightgreen')
-    image.paste(input_image, (0, 0))
-    from PIL import ImageDraw
-    draw = ImageDraw.Draw(image)
-    draw.text((50, 50), f"JoyAI {req.operation_type}", fill='black')
-
-    image.save(filepath)
-
-    return {
-        "filename": filename,
-        "url": f"/joyai-images/{filename}",
-        "source_image": req.image_path,
-        "operation": "spatial-transform",
-        "operation_type": req.operation_type,
-        "object_prompt": req.object_prompt,
-        "seed": req.seed
-    }
-
-
-# ====================================
-# 快捷操作端点
-# ====================================
 
 @app.post("/joyai/move-object")
 def move_object(
     image_path: str,
     object_prompt: str,
-    dx: float,
-    dy: float,
+    dx: float = 0.0,
+    dy: float = 0.0,
     seed: Optional[int] = None,
     steps: int = 30,
     guidance_scale: float = 4.0
 ):
-    """物体移动"""
+    prompt = f"Move the {object_prompt} into the red box and finally remove the red box."
+    
     req = SpatialTransformRequest(
         image_path=image_path,
         operation_type="move",
         object_prompt=object_prompt,
+        prompt=prompt,
         move_dx=dx,
         move_dy=dy,
         seed=seed,
         steps=steps,
         guidance_scale=guidance_scale
     )
-    return spatial_transform(req)
+    
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    generator = get_generator(seed, device)
+    
+    input_image = load_image_from_path(image_path)
+    
+    print(f"[Move Object] Prompt: {prompt}")
+    
+    try:
+        output = joyai_pipeline(
+            image=input_image,
+            prompt=prompt,
+            num_inference_steps=steps,
+            guidance_scale=guidance_scale,
+            generator=generator,
+        )
+        
+        output_image = output.images[0]
+        
+        filename = get_timestamp_filename("joyai_move")
+        filepath = os.path.join(OUTPUT_DIR, filename)
+        output_image.save(filepath)
+        
+        return {
+            "filename": filename,
+            "url": f"/joyai-images/{filename}",
+            "source_image": image_path,
+            "operation": "move-object",
+            "object_prompt": object_prompt,
+            "prompt": prompt,
+            "seed": seed
+        }
+        
+    except Exception as e:
+        print(f"Error in move-object: {e}")
+        raise HTTPException(status_code=500, detail=f"Move object failed: {str(e)}")
 
 
 @app.post("/joyai/rotate-object")
 def rotate_object(
     image_path: str,
     object_prompt: str,
-    angle: float,
+    view: str = "front",
     seed: Optional[int] = None,
     steps: int = 30,
     guidance_scale: float = 4.0
 ):
-    """物体旋转"""
-    req = SpatialTransformRequest(
-        image_path=image_path,
-        operation_type="rotate",
-        object_prompt=object_prompt,
-        rotate_angle=angle,
-        seed=seed,
-        steps=steps,
-        guidance_scale=guidance_scale
-    )
-    return spatial_transform(req)
+    view_map = {
+        "front": "front",
+        "right": "right",
+        "left": "left",
+        "rear": "rear",
+        "back": "rear",
+        "front_right": "front right",
+        "front_left": "front left",
+        "rear_right": "rear right",
+        "rear_left": "rear left",
+    }
+    view_text = view_map.get(view.lower(), "front")
+    prompt = f"Rotate the {object_prompt} to show the {view_text} side view."
+    
+    input_image = load_image_from_path(image_path)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    generator = get_generator(seed, device)
+    
+    print(f"[Rotate Object] Prompt: {prompt}")
+    
+    try:
+        output = joyai_pipeline(
+            image=input_image,
+            prompt=prompt,
+            num_inference_steps=steps,
+            guidance_scale=guidance_scale,
+            generator=generator,
+        )
+        
+        output_image = output.images[0]
+        
+        filename = get_timestamp_filename("joyai_rotate")
+        filepath = os.path.join(OUTPUT_DIR, filename)
+        output_image.save(filepath)
+        
+        return {
+            "filename": filename,
+            "url": f"/joyai-images/{filename}",
+            "source_image": image_path,
+            "operation": "rotate-object",
+            "object_prompt": object_prompt,
+            "view": view,
+            "prompt": prompt,
+            "seed": seed
+        }
+        
+    except Exception as e:
+        print(f"Error in rotate-object: {e}")
+        raise HTTPException(status_code=500, detail=f"Rotate object failed: {str(e)}")
 
 
 @app.post("/joyai/zoom")
 def zoom_image(
     image_path: str,
-    factor: float,
+    direction: str = "in",
     seed: Optional[int] = None,
     steps: int = 30,
     guidance_scale: float = 4.0
 ):
-    """缩放/镜头推拉"""
-    req = SpatialTransformRequest(
-        image_path=image_path,
-        operation_type="zoom",
-        zoom_factor=factor,
-        seed=seed,
-        steps=steps,
-        guidance_scale=guidance_scale
-    )
-    return spatial_transform(req)
+    direction = direction.lower()
+    if direction not in ["in", "out", "unchanged"]:
+        direction = "unchanged"
+    
+    prompt = f"Move the camera.\n- Camera rotation: Yaw 0°, Pitch 0°.\n- Camera zoom: {direction}.\n- Keep the 3D scene static; only change the viewpoint."
+    
+    input_image = load_image_from_path(image_path)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    generator = get_generator(seed, device)
+    
+    print(f"[Zoom] Prompt: {prompt}")
+    
+    try:
+        output = joyai_pipeline(
+            image=input_image,
+            prompt=prompt,
+            num_inference_steps=steps,
+            guidance_scale=guidance_scale,
+            generator=generator,
+        )
+        
+        output_image = output.images[0]
+        
+        filename = get_timestamp_filename("joyai_zoom")
+        filepath = os.path.join(OUTPUT_DIR, filename)
+        output_image.save(filepath)
+        
+        return {
+            "filename": filename,
+            "url": f"/joyai-images/{filename}",
+            "source_image": image_path,
+            "operation": "zoom",
+            "direction": direction,
+            "prompt": prompt,
+            "seed": seed
+        }
+        
+    except Exception as e:
+        print(f"Error in zoom: {e}")
+        raise HTTPException(status_code=500, detail=f"Zoom failed: {str(e)}")
 
 
 @app.post("/joyai/pan-tilt")
 def pan_tilt(
     image_path: str,
-    pan_angle: float = 0.0,
-    tilt_angle: float = 0.0,
+    yaw: float = 0.0,
+    pitch: float = 0.0,
+    zoom: str = "unchanged",
     seed: Optional[int] = None,
     steps: int = 30,
     guidance_scale: float = 4.0
 ):
-    """镜头平移和倾斜"""
-    req = SpatialTransformRequest(
-        image_path=image_path,
-        operation_type="pan-tilt",
-        pan_angle=pan_angle,
-        tilt_angle=tilt_angle,
-        seed=seed,
-        steps=steps,
-        guidance_scale=guidance_scale
-    )
-    return spatial_transform(req)
+    prompt = f"Move the camera.\n- Camera rotation: Yaw {yaw}°, Pitch {pitch}°.\n- Camera zoom: {zoom}.\n- Keep the 3D scene static; only change the viewpoint."
+    
+    input_image = load_image_from_path(image_path)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    generator = get_generator(seed, device)
+    
+    print(f"[Pan-Tilt] Prompt: {prompt}")
+    
+    try:
+        output = joyai_pipeline(
+            image=input_image,
+            prompt=prompt,
+            num_inference_steps=steps,
+            guidance_scale=guidance_scale,
+            generator=generator,
+        )
+        
+        output_image = output.images[0]
+        
+        filename = get_timestamp_filename("joyai_pantilt")
+        filepath = os.path.join(OUTPUT_DIR, filename)
+        output_image.save(filepath)
+        
+        return {
+            "filename": filename,
+            "url": f"/joyai-images/{filename}",
+            "source_image": image_path,
+            "operation": "pan-tilt",
+            "yaw": yaw,
+            "pitch": pitch,
+            "zoom": zoom,
+            "prompt": prompt,
+            "seed": seed
+        }
+        
+    except Exception as e:
+        print(f"Error in pan-tilt: {e}")
+        raise HTTPException(status_code=500, detail=f"Pan-tilt failed: {str(e)}")
 
 
 if __name__ == "__main__":
