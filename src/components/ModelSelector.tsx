@@ -1,4 +1,4 @@
-import { Bot, Sparkles, Zap, Palette } from 'lucide-react';
+import { Bot, Sparkles, Zap, Palette, Wand2 } from 'lucide-react';
 import { ModelType } from '../types';
 import { useStore } from '../store';
 
@@ -44,6 +44,14 @@ const models: ModelInfo[] = [
     description: '本地部署文生图模型',
     features: ['本地 GPU 推理', '高分辨率', '快速生成'],
   },
+  {
+    id: 'joyai-image-edit',
+    name: 'JoyAI Image Edit',
+    icon: Wand2,
+    color: 'text-pink-400',
+    description: '图像理解与空间变换模型',
+    features: ['图像理解', '文生图', '图像编辑', '空间变换'],
+  },
 ];
 
 export default function ModelSelector() {
@@ -74,6 +82,8 @@ export default function ModelSelector() {
                     ? '#8b5cf6'
                     : model.color === 'text-emerald-400'
                     ? '#34d399'
+                    : model.color === 'text-pink-400'
+                    ? '#f472b6'
                     : '#f59e0b'
                   : 'transparent',
               }}

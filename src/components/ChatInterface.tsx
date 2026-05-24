@@ -10,6 +10,7 @@ export default function ChatInterface({ onPreviewImages }: ChatInterfaceProps) {
   const messages = useStore((state) => state.getCurrentMessages());
   const isLoading = useStore((state) => state.isLoading);
   const currentModel = useStore((state) => state.currentModel);
+  const config = useStore((state) => state.config);
 
   return (
     <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -59,6 +60,15 @@ export default function ChatInterface({ onPreviewImages }: ChatInterfaceProps) {
                   FLUX.2 Klein 9B 是本地部署的文生图模型。输入文字描述，即可通过本地 GPU 快速生成高质量图片。
                 </>
               )}
+              {currentModel === 'joyai-image-edit' && (
+                <>
+                  JoyAI Image Edit 支持图像理解、文生图、图像编辑和空间变换（物体移动/旋转、镜头控制）。
+                  {config.joyaiMode === 'text-to-image' && ' 当前模式：文生图'}
+                  {config.joyaiMode === 'edit-image' && ' 当前模式：图像编辑'}
+                  {config.joyaiMode === 'understand-image' && ' 当前模式：图像理解'}
+                  {config.joyaiMode === 'spatial-transform' && ' 当前模式：空间变换'}
+                </>
+              )}
             </p>
           </div>
         ) : (
@@ -79,7 +89,9 @@ export default function ChatInterface({ onPreviewImages }: ChatInterfaceProps) {
                 <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-card-bg">
                   <div className="flex items-center gap-2 text-text-secondary">
                     <Loader2 size={14} className="animate-spin" />
-                    <span className="text-sm">思考中...</span>
+                    <span className="text-sm">
+                      {currentModel === 'joyai-image-edit' ? '处理中...' : '思考中...'}
+                    </span>
                   </div>
                 </div>
               </div>

@@ -2,6 +2,7 @@ import { ModelType, Message, ContentBlock } from '../types';
 
 const BASE_URL = 'https://token.sensenova.cn/v1';
 const FLUX_API_URL = import.meta.env.VITE_FLUX_API_URL || 'http://192.168.199.107:8787';
+const JOYAI_API_URL = import.meta.env.VITE_JOYAI_API_URL || 'http://192.168.199.107:8788';
 const SENSENOVA_API_KEY = import.meta.env.VITE_SENSENOVA_API_KEY || '';
 
 interface SendMessageParams {
@@ -307,6 +308,249 @@ export async function generateImage({
     const data = await response.json();
     const images = data.data?.map((item: any) => item.url) || [];
     onComplete(images);
+  } catch (error) {
+    onError(error instanceof Error ? error.message : '未知错误');
+  }
+}
+
+// ====================================
+// JoyAI 服务
+// ====================================
+
+interface JoyAITextToImageParams {
+  prompt: string;
+  negativePrompt?: string;
+  steps: number;
+  guidanceScale: number;
+  basesize: number;
+  seed?: number;
+  onComplete: (imageUrl: string) => void;
+  onError: (error: string) => void;
+}
+
+export async function joyAITextToImage({
+  prompt,
+  negativePrompt = '',
+  steps,
+  guidanceScale,
+  basesize,
+  seed,
+  onComplete,
+  onError,
+}: JoyAITextToImageParams): Promise<void> {
+  try {
+    const response = await fetch(`${JOYAI_API_URL}/joyai/text-to-image`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        negative_prompt: negativePrompt,
+        steps,
+        guidance_scale: guidanceScale,
+        basesize,
+        seed: seed ?? null,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || `请求失败: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const imageUrl = `${JOYAI_API_URL}${data.url}`;
+    onComplete(imageUrl);
+  } catch (error) {
+    onError(error instanceof Error ? error.message : '未知错误');
+  }
+}
+
+interface JoyAIEditImageParams {
+  prompt: string;
+  imagePath: string;
+  strength: number;
+  steps: number;
+  guidanceScale: number;
+  basesize: number;
+  seed?: number;
+  onComplete: (imageUrl: string) => void;
+  onError: (error: string) => void;
+}
+
+export async function joyAIEditImage({
+  prompt,
+  imagePath,
+  strength,
+  steps,
+  guidanceScale,
+  basesize,
+  seed,
+  onComplete,
+  onError,
+}: JoyAIEditImageParams): Promise<void> {
+  try {
+    const relativePath = imagePath.replace(JOYAI_API_URL, '');
+    const response = await fetch(`${JOYAI_API_URL}/joyai/edit-image`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        image_path: relativePath,
+        strength,
+        steps,
+        guidance_scale: guidanceScale,
+        basesize,
+        seed: seed ?? null,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || `请求失败: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const imageUrl = `${JOYAI_API_URL}${data.url}`;
+    onComplete(imageUrl);
+  } catch (error) {
+    onError(error instanceof Error ? error.message : '未知错误');
+  }
+}
+
+interface JoyAIUnderstandImageParams {
+  imagePath: string;
+  question: string;
+  onComplete: (description: string) => void;
+  onError: (error: string) => void;
+}
+
+export async function joyAIUnderstandImage({
+  imagePath,
+  question,
+  onComplete,
+  onError,
+}: JoyAIUnderstandImageParams): Promise<void> {
+  try {
+    const relativePath = imagePath.replace(JOYAI_API_URL, '');
+    const response = await fetch(`${JOYAI_API_URL}/joyai/understand-image`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image_path: relativePath,
+        question,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || `请求失败: ${response.status}`);
+    }
+
+    const data = await response.json();
+    onComplete(data.description);
+  } catch (error) {
+    onError(error instanceof Error ? error.message : '未知错误');
+  }
+}
+
+interface JoyAISpatialTransformParams {
+  imagePath: string;
+  operationType: 'move' | 'rotate' | 'zoom' | 'pan-tilt';
+  objectPrompt: string;
+  moveDx?: number;
+  moveDy?: number;
+  rotateAngle?: number;
+  zoomFactor?: number;
+  panAngle?: number;
+  tiltAngle?: number;
+  steps: number;
+  guidanceScale: number;
+  basesize: number;
+  seed?: number;
+  onComplete: (imageUrl: string) => void;
+  onError: (error: string) => void;
+}
+
+export async function joyAISpatialTransform({
+  imagePath,
+  operationType,
+  objectPrompt,
+  moveDx = 0,
+  moveDy = 0,
+  rotateAngle = 0,
+  zoomFactor = 1,
+  panAngle = 0,
+  tiltAngle = 0,
+  steps,
+  guidanceScale,
+  basesize,
+  seed,
+  onComplete,
+  onError,
+}: JoyAISpatialTransformParams): Promise<void> {
+  try {
+    const relativePath = imagePath.replace(JOYAI_API_URL, '');
+    const response = await fetch(`${JOYAI_API_URL}/joyai/spatial-transform`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image_path: relativePath,
+        operation_type: operationType,
+        object_prompt: objectPrompt,
+        move_dx: moveDx,
+        move_dy: moveDy,
+        rotate_angle: rotateAngle,
+        zoom_factor: zoomFactor,
+        pan_angle: panAngle,
+        tilt_angle: tiltAngle,
+        steps,
+        guidance_scale: guidanceScale,
+        basesize,
+        seed: seed ?? null,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || `请求失败: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const imageUrl = `${JOYAI_API_URL}${data.url}`;
+    onComplete(imageUrl);
+  } catch (error) {
+    onError(error instanceof Error ? error.message : '未知错误');
+  }
+}
+
+interface JoyAIUploadImagesParams {
+  files: File[];
+  onComplete: (imageUrls: string[]) => void;
+  onError: (error: string) => void;
+}
+
+export async function joyAIUploadImages({
+  files,
+  onComplete,
+  onError,
+}: JoyAIUploadImagesParams): Promise<void> {
+  try {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+
+    const response = await fetch(`${JOYAI_API_URL}/joyai/upload-images`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || `请求失败: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const imageUrls = data.uploaded_files.map((f: any) => `${JOYAI_API_URL}${f.url}`);
+    onComplete(imageUrls);
   } catch (error) {
     onError(error instanceof Error ? error.message : '未知错误');
   }

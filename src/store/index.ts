@@ -45,6 +45,19 @@ const defaultConfig: ModelConfig = {
   fluxSteps: 4,
   fluxGuidanceScale: 1.0,
   fluxStrength: 0.8,
+  joyaiMode: 'text-to-image',
+  joyaiSteps: 30,
+  joyaiGuidanceScale: 4.0,
+  joyaiBasesize: 1024,
+  joyaiStrength: 0.8,
+  joyaiOperationType: 'move',
+  joyaiMoveDx: 0.0,
+  joyaiMoveDy: 0.0,
+  joyaiRotateAngle: 0.0,
+  joyaiZoomFactor: 1.0,
+  joyaiPanAngle: 0.0,
+  joyaiTiltAngle: 0.0,
+  joyaiObjectPrompt: '',
 };
 
 export const useStore = create<AppState>()(

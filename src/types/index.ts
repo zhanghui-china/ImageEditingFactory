@@ -1,4 +1,4 @@
-export type ModelType = 'sensenova-6.7-flash-lite' | 'deepseek-v4-flash' | 'sensenova-u1-fast' | 'flux-klein';
+export type ModelType = 'sensenova-6.7-flash-lite' | 'deepseek-v4-flash' | 'sensenova-u1-fast' | 'flux-klein' | 'joyai-image-edit';
 
 export interface Message {
   id: string;
@@ -29,6 +29,19 @@ export interface ModelConfig {
   fluxSteps: number;
   fluxGuidanceScale: number;
   fluxStrength: number;
+  joyaiMode: 'text-to-image' | 'edit-image' | 'understand-image' | 'spatial-transform';
+  joyaiSteps: number;
+  joyaiGuidanceScale: number;
+  joyaiBasesize: number;
+  joyaiStrength: number;
+  joyaiOperationType: 'move' | 'rotate' | 'zoom' | 'pan-tilt';
+  joyaiMoveDx: number;
+  joyaiMoveDy: number;
+  joyaiRotateAngle: number;
+  joyaiZoomFactor: number;
+  joyaiPanAngle: number;
+  joyaiTiltAngle: number;
+  joyaiObjectPrompt: string;
 }
 
 export interface ContentBlock {
