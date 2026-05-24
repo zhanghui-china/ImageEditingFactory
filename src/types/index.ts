@@ -1,4 +1,10 @@
-export type ModelType = 'sensenova-6.7-flash-lite' | 'deepseek-v4-flash' | 'sensenova-u1-fast' | 'flux-klein' | 'joyai-image-edit';
+export type ModelType = 
+  | 'sensenova-6.7-flash-lite' 
+  | 'deepseek-v4-flash' 
+  | 'sensenova-u1-fast' 
+  | 'flux-klein' 
+  | 'joyai-image-edit'
+  | 'hidream-o1-image';
 
 export interface Message {
   id: string;
@@ -8,6 +14,7 @@ export interface Message {
   images?: string[];
   timestamp: number;
   model: string;
+  duration?: number;
   tokens?: {
     prompt: number;
     completion: number;
@@ -42,6 +49,14 @@ export interface ModelConfig {
   joyaiPanAngle: number;
   joyaiTiltAngle: number;
   joyaiObjectPrompt: string;
+  hidreamMode: 'text-to-image' | 'edit-image' | 'subject-driven';
+  hidreamWidth: number;
+  hidreamHeight: number;
+  hidreamSteps: number;
+  hidreamGuidanceScale: number;
+  hidreamStrength: number;
+  hidreamKeepAspect: boolean;
+  hidreamScheduler: 'flow_match' | 'flash';
 }
 
 export interface ContentBlock {

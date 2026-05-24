@@ -1,6 +1,7 @@
 import { Message } from '../types';
-import { Bot, User, Download, ZoomIn } from 'lucide-react';
+import { Bot, User, Download, ZoomIn, Clock } from 'lucide-react';
 import { useStore } from '../store';
+import { formatDuration } from '../utils/formatDuration';
 
 interface MessageBubbleProps {
   message: Message;
@@ -125,6 +126,13 @@ export default function MessageBubble({ message, onPreviewImages }: MessageBubbl
         {message.tokens && (
           <div className="text-xs text-text-muted px-1">
             Tokens: {message.tokens.total}
+          </div>
+        )}
+        
+        {message.duration && !isUser && (
+          <div className="text-xs text-text-muted px-1 flex items-center gap-1">
+            <Clock size={12} />
+            <span>耗时: {formatDuration(message.duration)}</span>
           </div>
         )}
       </div>

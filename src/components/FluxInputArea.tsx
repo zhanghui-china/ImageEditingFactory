@@ -48,6 +48,7 @@ export default function FluxInputArea() {
     if (!isTextToImage && files.length === 0) return;
     if (isLoading) return;
 
+    const startTime = Date.now();
     const userMessage = {
       id: Date.now().toString(),
       role: 'user' as const,
@@ -68,6 +69,7 @@ export default function FluxInputArea() {
         steps: config.fluxSteps,
         guidanceScale: config.fluxGuidanceScale,
         onComplete: (imageUrl) => {
+          const duration = Date.now() - startTime;
           const assistantMessage = {
             id: (Date.now() + 1).toString(),
             role: 'assistant' as const,
@@ -75,6 +77,7 @@ export default function FluxInputArea() {
             images: [imageUrl],
             timestamp: Date.now(),
             model: currentModel,
+            duration: duration,
           };
           addMessage(assistantMessage);
           setLoading(false);
@@ -99,6 +102,7 @@ export default function FluxInputArea() {
             guidanceScale: config.fluxGuidanceScale,
             strength: config.fluxStrength,
             onComplete: (imageUrl) => {
+              const duration = Date.now() - startTime;
               const assistantMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant' as const,
@@ -106,6 +110,7 @@ export default function FluxInputArea() {
                 images: [imageUrl],
                 timestamp: Date.now(),
                 model: currentModel,
+                duration: duration,
               };
               addMessage(assistantMessage);
               setLoading(false);

@@ -7,6 +7,14 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      '/api/generate': {
+        target: 'http://192.168.199.107:7860',
+        changeOrigin: true,
+      },
+      '/api/refine': {
+        target: 'http://192.168.199.107:7860',
+        changeOrigin: true,
+      },
       '/joyai-images': {
         target: 'http://192.168.199.107:8788',
         changeOrigin: true,
@@ -15,43 +23,7 @@ export default defineConfig({
         target: 'http://192.168.199.107:8788',
         changeOrigin: true,
       },
-      '/joyai/upload-images': {
-        target: 'http://192.168.199.107:8788',
-        changeOrigin: true,
-      },
-      '/joyai/text-to-image': {
-        target: 'http://192.168.199.107:8788',
-        changeOrigin: true,
-      },
-      '/joyai/edit-image': {
-        target: 'http://192.168.199.107:8788',
-        changeOrigin: true,
-      },
-      '/joyai/understand-image': {
-        target: 'http://192.168.199.107:8788',
-        changeOrigin: true,
-      },
-      '/joyai/spatial-transform': {
-        target: 'http://192.168.199.107:8788',
-        changeOrigin: true,
-      },
-      '/joyai/move-object': {
-        target: 'http://192.168.199.107:8788',
-        changeOrigin: true,
-      },
-      '/joyai/rotate-object': {
-        target: 'http://192.168.199.107:8788',
-        changeOrigin: true,
-      },
-      '/joyai/zoom': {
-        target: 'http://192.168.199.107:8788',
-        changeOrigin: true,
-      },
-      '/joyai/pan-tilt': {
-        target: 'http://192.168.199.107:8788',
-        changeOrigin: true,
-      },
-      '/joyai/health': {
+      '/joyai': {
         target: 'http://192.168.199.107:8788',
         changeOrigin: true,
       },

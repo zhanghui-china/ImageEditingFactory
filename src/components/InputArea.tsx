@@ -52,6 +52,8 @@ export default function InputArea() {
       return;
     }
 
+    const startTime = Date.now();
+
     if (isU1Fast) {
       if (!input.trim()) return;
 
@@ -73,6 +75,7 @@ export default function InputArea() {
         size: config.imageSize,
         n: config.imageCount,
         onComplete: (images) => {
+          const duration = Date.now() - startTime;
           const assistantMessage = {
             id: (Date.now() + 1).toString(),
             role: 'assistant' as const,
@@ -80,6 +83,7 @@ export default function InputArea() {
             images,
             timestamp: Date.now(),
             model: currentModel,
+            duration: duration,
           };
           addMessage(assistantMessage);
           setLoading(false);
@@ -127,6 +131,24 @@ export default function InputArea() {
           updateStreamingMessage(content, reasoning);
         },
         onComplete: () => {
+          const duration = Date.now() - startTime;
+          // 更新最后一条消息，添加 duration
+          const currentMessages = useStore.getState().getCurrentMessages();
+          const lastMessage = currentMessages[currentMessages.length - 1];
+          if (lastMessage && lastMessage.role === 'assistant') {
+            // 由于 updateStreamingMessage 会更新消息，我们需要在 store 中添加 duration
+            // 但目前的实现不会保存 duration，所以这里我们手动更新
+            useStore.setState({
+              messagesByModel: {
+                ...useStore.getState().messagesByModel,
+                [currentModel]: currentMessages.map((msg, idx) => 
+                  idx === currentMessages.length - 1 
+                    ? { ...msg, duration }
+                    : msg
+                ),
+              },
+            });
+          }
           setLoading(false);
         },
         onError: (error) => {

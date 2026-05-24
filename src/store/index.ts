@@ -58,7 +58,35 @@ const defaultConfig: ModelConfig = {
   joyaiPanAngle: 0.0,
   joyaiTiltAngle: 0.0,
   joyaiObjectPrompt: '',
+  hidreamMode: 'text-to-image',
+  hidreamWidth: 2048,
+  hidreamHeight: 2048,
+  hidreamSteps: 50,
+  hidreamGuidanceScale: 4.0,
+  hidreamStrength: 0.8,
+  hidreamKeepAspect: true,
+  hidreamScheduler: 'flow_match',
 };
+
+// 清除旧的 localStorage 数据，防止超大图片占用配额
+try {
+  const oldData = localStorage.getItem('sensenova-storage');
+  if (oldData) {
+    try {
+      const parsed = JSON.parse(oldData);
+      // 如果有旧的 messages，删除它们
+      if (parsed.state && parsed.state.messagesByModel) {
+        localStorage.removeItem('sensenova-storage');
+        console.log('[Store] Cleared old storage with large messages');
+      }
+    } catch (e) {
+      // 无效的 JSON，直接删除
+      localStorage.removeItem('sensenova-storage');
+    }
+  }
+} catch (e) {
+  // 如果 localStorage 访问失败，忽略
+}
 
 export const useStore = create<AppState>()(
   persist(
@@ -123,7 +151,7 @@ export const useStore = create<AppState>()(
 
       setLoading: (loading) => set({ isLoading: loading }),
 
-      setError: (error) => set({ error }),
+      setError: (error) => set({ error: error }),
 
       clearMessages: (model) =>
         set((state) => {
@@ -153,7 +181,6 @@ export const useStore = create<AppState>()(
         apiKey: state.apiKey,
         currentModel: state.currentModel,
         config: state.config,
-        messagesByModel: state.messagesByModel,
         fluxMode: state.fluxMode,
       }),
       merge: (persistedState, currentState) => {
@@ -161,6 +188,7 @@ export const useStore = create<AppState>()(
         return {
           ...currentState,
           ...ps,
+          messagesByModel: {}, // 永远不从存储加载消息
           config: {
             ...currentState.config,
             ...(ps.config || {}),

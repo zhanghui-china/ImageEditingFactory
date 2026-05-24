@@ -1,4 +1,5 @@
-import { Settings, Thermometer, Maximize2, Brain, Image, ImagePlus, Trash2, Sliders, Move, RotateCw, ZoomIn, ArrowLeftRight, ArrowUpDown } from 'lucide-react';
+import { Settings, Thermometer, Maximize2, Brain, Image, ImagePlus, Trash2, Sliders, Move, RotateCw, ZoomIn, ArrowLeftRight, ArrowUpDown, Layers, ChevronUp, ChevronDown } from 'lucide-react';
+import { useState } from 'react';
 import { useStore } from '../store';
 
 const imageSizes = [
@@ -18,20 +19,33 @@ export default function SettingsPanel() {
   const messages = useStore((state) => state.getCurrentMessages());
   const messagesByModel = useStore((state) => state.messagesByModel);
   const fluxMode = useStore((state) => state.fluxMode);
+  
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const isDeepSeek = currentModel === 'deepseek-v4-flash';
   const isU1Fast = currentModel === 'sensenova-u1-fast';
   const isFluxKlein = currentModel === 'flux-klein';
   const isJoyAI = currentModel === 'joyai-image-edit';
+  const isHiDream = currentModel === 'hidream-o1-image';
   const isFluxImageToImage = isFluxKlein && fluxMode === 'image-to-image';
 
   return (
     <div className="p-4 bg-sidebar-bg border-t border-card-bg">
-      <div className="max-w-4xl mx-auto space-y-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Settings size={16} className="text-text-secondary" />
-          <span className="text-sm font-medium text-text-secondary">参数设置</span>
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Settings size={16} className="text-text-secondary" />
+            <span className="text-sm font-medium text-text-secondary">参数设置</span>
+          </div>
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-1.5 rounded-lg hover:bg-card-bg transition-colors text-text-muted hover:text-text-secondary"
+          >
+            {isExpanded ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+          </button>
         </div>
+        
+        {isExpanded && <div className="space-y-4">
 
         {!isU1Fast && !isFluxKlein && !isJoyAI && (
           <>
@@ -527,6 +541,143 @@ export default function SettingsPanel() {
           </>
         )}
 
+        {isHiDream && (
+          <>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Layers size={14} className="text-cyan-400" />
+                <label className="text-xs text-text-secondary">图片宽度</label>
+                <span className="text-xs text-text-muted ml-auto">{config.hidreamWidth}px</span>
+              </div>
+              <input
+                type="range"
+                min="512"
+                max="2048"
+                step="128"
+                value={config.hidreamWidth}
+                onChange={(e) => updateConfig({ hidreamWidth: parseInt(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-cyan-400"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Layers size={14} className="text-cyan-400" />
+                <label className="text-xs text-text-secondary">图片高度</label>
+                <span className="text-xs text-text-muted ml-auto">{config.hidreamHeight}px</span>
+              </div>
+              <input
+                type="range"
+                min="512"
+                max="2048"
+                step="128"
+                value={config.hidreamHeight}
+                onChange={(e) => updateConfig({ hidreamHeight: parseInt(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-cyan-400"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-cyan-400" />
+                <label className="text-xs text-text-secondary">推理步数</label>
+                <span className="text-xs text-text-muted ml-auto">{config.hidreamSteps}</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="100"
+                step="1"
+                value={config.hidreamSteps}
+                onChange={(e) => updateConfig({ hidreamSteps: parseInt(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-cyan-400"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-cyan-400" />
+                <label className="text-xs text-text-secondary">引导强度</label>
+                <span className="text-xs text-text-muted ml-auto">{config.hidreamGuidanceScale.toFixed(1)}</span>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="10.0"
+                step="0.5"
+                value={config.hidreamGuidanceScale}
+                onChange={(e) => updateConfig({ hidreamGuidanceScale: parseFloat(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-cyan-400"
+              />
+            </div>
+
+            {config.hidreamMode === 'edit-image' && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Sliders size={14} className="text-cyan-400" />
+                  <label className="text-xs text-text-secondary">编辑强度</label>
+                  <span className="text-xs text-text-muted ml-auto">{config.hidreamStrength.toFixed(2)}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="1.0"
+                  step="0.05"
+                  value={config.hidreamStrength}
+                  onChange={(e) => updateConfig({ hidreamStrength: parseFloat(e.target.value) })}
+                  className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                />
+                <div className="text-xs text-text-muted text-center">
+                  越高: 变化越大 | 越低: 保持原图
+                </div>
+              </div>
+            )}
+
+            {(config.hidreamMode === 'edit-image' || config.hidreamMode === 'subject-driven') && (
+              <>
+                <div className="flex items-center gap-2">
+                  <Layers size={14} className="text-cyan-400" />
+                  <label className="text-xs text-text-secondary">保持宽高比</label>
+                  <button
+                    onClick={() => updateConfig({ hidreamKeepAspect: !config.hidreamKeepAspect })}
+                    className={`ml-auto w-12 h-6 rounded-full transition-colors ${
+                      config.hidreamKeepAspect ? 'bg-cyan-400' : 'bg-card-bg'
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
+                        config.hidreamKeepAspect ? 'translate-x-6' : 'translate-x-0.5'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Sliders size={14} className="text-cyan-400" />
+                    <label className="text-xs text-text-secondary">调度器</label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['flow_match', 'flash'].map((sched) => (
+                      <button
+                        key={sched}
+                        onClick={() => updateConfig({ hidreamScheduler: sched as any })}
+                        className={`py-2 px-3 text-xs rounded-lg transition-colors ${
+                          config.hidreamScheduler === sched
+                            ? 'bg-cyan-400 text-white'
+                            : 'bg-card-bg text-text-secondary hover:bg-opacity-80'
+                        }`}
+                      >
+                        {sched === 'flow_match' ? 'Flow Match' : 'Flash'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </>
+        )}
+
         {messages.length > 0 && (
           <button
             onClick={() => clearMessages(currentModel)}
@@ -557,6 +708,7 @@ export default function SettingsPanel() {
             </div>
           </div>
         )}
+        </div>}
       </div>
     </div>
   );

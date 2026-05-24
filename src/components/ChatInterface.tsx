@@ -69,6 +69,14 @@ export default function ChatInterface({ onPreviewImages }: ChatInterfaceProps) {
                   {config.joyaiMode === 'spatial-transform' && ' 当前模式：空间变换'}
                 </>
               )}
+              {currentModel === 'hidream-o1-image' && (
+                <>
+                  HiDream O1 Image 是像素级统一多模态模型，支持文生图、图像编辑、主体驱动，最高生成 2048x2048 高分辨率图片。
+                  {config.hidreamMode === 'text-to-image' && ' 当前模式：文生图'}
+                  {config.hidreamMode === 'edit-image' && ' 当前模式：图像编辑'}
+                  {config.hidreamMode === 'subject-driven' && ' 当前模式：主体驱动'}
+                </>
+              )}
             </p>
           </div>
         ) : (
@@ -90,7 +98,7 @@ export default function ChatInterface({ onPreviewImages }: ChatInterfaceProps) {
                   <div className="flex items-center gap-2 text-text-secondary">
                     <Loader2 size={14} className="animate-spin" />
                     <span className="text-sm">
-                      {currentModel === 'joyai-image-edit' ? '处理中...' : '思考中...'}
+                      {currentModel === 'joyai-image-edit' || currentModel === 'hidream-o1-image' ? '处理中...' : '思考中...'}
                     </span>
                   </div>
                 </div>

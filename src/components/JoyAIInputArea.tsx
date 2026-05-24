@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Send, Loader2, X, Palette, Upload, Sparkles, Eye, Move, RotateCw, ZoomIn, MoveHorizontal } from 'lucide-react';
+import { Send, Loader2, X, Palette, Upload, Sparkles, Eye, Move } from 'lucide-react';
 import { useStore } from '../store';
 import {
   joyAITextToImage,
@@ -53,6 +53,7 @@ export default function JoyAIInputArea() {
     if (joyaiMode !== 'text-to-image' && files.length === 0) return;
     if (isLoading) return;
 
+    const startTime = Date.now();
     const userMessage = {
       id: Date.now().toString(),
       role: 'user' as const,
@@ -73,6 +74,7 @@ export default function JoyAIInputArea() {
         guidanceScale: config.joyaiGuidanceScale,
         basesize: config.joyaiBasesize,
         onComplete: (imageUrl) => {
+          const duration = Date.now() - startTime;
           const assistantMessage = {
             id: (Date.now() + 1).toString(),
             role: 'assistant' as const,
@@ -80,6 +82,7 @@ export default function JoyAIInputArea() {
             images: [imageUrl],
             timestamp: Date.now(),
             model: currentModel,
+            duration: duration,
           };
           addMessage(assistantMessage);
           setLoading(false);
@@ -101,6 +104,7 @@ export default function JoyAIInputArea() {
             guidanceScale: config.joyaiGuidanceScale,
             basesize: config.joyaiBasesize,
             onComplete: (imageUrl) => {
+              const duration = Date.now() - startTime;
               const assistantMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant' as const,
@@ -108,6 +112,7 @@ export default function JoyAIInputArea() {
                 images: [imageUrl],
                 timestamp: Date.now(),
                 model: currentModel,
+                duration: duration,
               };
               addMessage(assistantMessage);
               setLoading(false);
@@ -133,6 +138,7 @@ export default function JoyAIInputArea() {
             imagePath: uploadedImageUrls[0],
             question: input || '描述这张图片的内容',
             onComplete: (description) => {
+              const duration = Date.now() - startTime;
               const assistantMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant' as const,
@@ -140,6 +146,7 @@ export default function JoyAIInputArea() {
                 images: uploadedImageUrls,
                 timestamp: Date.now(),
                 model: currentModel,
+                duration: duration,
               };
               addMessage(assistantMessage);
               setLoading(false);
@@ -175,6 +182,7 @@ export default function JoyAIInputArea() {
             guidanceScale: config.joyaiGuidanceScale,
             basesize: config.joyaiBasesize,
             onComplete: (imageUrl) => {
+              const duration = Date.now() - startTime;
               const assistantMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant' as const,
@@ -182,6 +190,7 @@ export default function JoyAIInputArea() {
                 images: [imageUrl],
                 timestamp: Date.now(),
                 model: currentModel,
+                duration: duration,
               };
               addMessage(assistantMessage);
               setLoading(false);

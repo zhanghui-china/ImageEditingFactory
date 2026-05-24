@@ -1,4 +1,4 @@
-import { Bot, Sparkles, Zap, Palette, Wand2 } from 'lucide-react';
+import { Bot, Sparkles, Zap, Palette, Wand2, Layers } from 'lucide-react';
 import { ModelType } from '../types';
 import { useStore } from '../store';
 
@@ -52,6 +52,14 @@ const models: ModelInfo[] = [
     description: '图像理解与空间变换模型',
     features: ['图像理解', '文生图', '图像编辑', '空间变换'],
   },
+  {
+    id: 'hidream-o1-image',
+    name: 'HiDream-O1-Image',
+    icon: Layers,
+    color: 'text-cyan-400',
+    description: 'Pixel-level 统一多模态模型',
+    features: ['文生图 2048', '图像编辑', '主体驱动', '长文本渲染'],
+  },
 ];
 
 export default function ModelSelector() {
@@ -84,6 +92,8 @@ export default function ModelSelector() {
                     ? '#34d399'
                     : model.color === 'text-pink-400'
                     ? '#f472b6'
+                    : model.color === 'text-cyan-400'
+                    ? '#22d3ee'
                     : '#f59e0b'
                   : 'transparent',
               }}

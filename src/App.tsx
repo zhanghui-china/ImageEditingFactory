@@ -5,6 +5,7 @@ import ChatInterface from './components/ChatInterface';
 import InputArea from './components/InputArea';
 import FluxInputArea from './components/FluxInputArea';
 import JoyAIInputArea from './components/JoyAIInputArea';
+import HiDreamInputArea from './components/HiDreamInputArea';
 import SettingsPanel from './components/SettingsPanel';
 import ImagePreviewModal from './components/ImagePreviewModal';
 import { AlertCircle } from 'lucide-react';
@@ -22,6 +23,7 @@ function App() {
   const messages = getCurrentMessages();
   const isFluxKlein = currentModel === 'flux-klein';
   const isJoyAI = currentModel === 'joyai-image-edit';
+  const isHiDream = currentModel === 'hidream-o1-image';
   const apiKey = getApiKey();
 
   useEffect(() => {
@@ -134,7 +136,15 @@ function App() {
             </div>
           )}
 
-          {isFluxKlein ? <FluxInputArea /> : isJoyAI ? <JoyAIInputArea /> : <InputArea />}
+          {isFluxKlein ? (
+            <FluxInputArea />
+          ) : isJoyAI ? (
+            <JoyAIInputArea />
+          ) : isHiDream ? (
+            <HiDreamInputArea />
+          ) : (
+            <InputArea />
+          )}
         </main>
       </div>
 
