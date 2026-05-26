@@ -306,16 +306,33 @@ export default function SettingsPanel() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Sliders size={14} className="text-pink-400" />
-                <label className="text-xs text-text-secondary">基础尺寸</label>
-                <span className="text-xs text-text-muted ml-auto">{config.joyaiBasesize}px</span>
+                <label className="text-xs text-text-secondary">图片宽度</label>
+                <span className="text-xs text-text-muted ml-auto">{config.joyaiWidth}px</span>
               </div>
               <input
                 type="range"
                 min="512"
                 max="2048"
                 step="128"
-                value={config.joyaiBasesize}
-                onChange={(e) => updateConfig({ joyaiBasesize: parseInt(e.target.value) })}
+                value={config.joyaiWidth}
+                onChange={(e) => updateConfig({ joyaiWidth: parseInt(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-pink-400"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-pink-400" />
+                <label className="text-xs text-text-secondary">图片高度</label>
+                <span className="text-xs text-text-muted ml-auto">{config.joyaiHeight}px</span>
+              </div>
+              <input
+                type="range"
+                min="512"
+                max="2048"
+                step="128"
+                value={config.joyaiHeight}
+                onChange={(e) => updateConfig({ joyaiHeight: parseInt(e.target.value) })}
                 className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-pink-400"
               />
             </div>

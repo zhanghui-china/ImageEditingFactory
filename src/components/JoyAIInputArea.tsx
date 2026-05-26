@@ -148,7 +148,8 @@ export default function JoyAIInputArea() {
         prompt: promptToUse,
         steps: config.joyaiSteps,
         guidanceScale: config.joyaiGuidanceScale,
-        basesize: config.joyaiBasesize,
+        height: config.joyaiHeight,
+        width: config.joyaiWidth,
         onComplete: async (imageUrl) => {
           const duration = Date.now() - startTime;
           const responseTime = new Date().toISOString();
@@ -204,7 +205,6 @@ export default function JoyAIInputArea() {
             imagePath: uploadedImageUrls[0],
             steps: config.joyaiSteps,
             guidanceScale: config.joyaiGuidanceScale,
-            basesize: config.joyaiBasesize,
             onComplete: async (imageUrl) => {
               const duration = Date.now() - startTime;
               const responseTime = new Date().toISOString();
@@ -282,7 +282,7 @@ export default function JoyAIInputArea() {
         files: currentFiles,
         onComplete: async (uploadedImageUrls) => {
           joyAIUnderstandImage({
-            imagePath: uploadedImageUrls[0],
+            imagePaths: uploadedImageUrls,
             question: promptToUse || '描述这张图片的内容',
             onComplete: async (description) => {
               const duration = Date.now() - startTime;
@@ -365,7 +365,6 @@ export default function JoyAIInputArea() {
             prompt: promptToUse,
             steps: config.joyaiSteps,
             guidanceScale: config.joyaiGuidanceScale,
-            basesize: config.joyaiBasesize,
             onComplete: async (imageUrl) => {
               const duration = Date.now() - startTime;
               const responseTime = new Date().toISOString();
@@ -516,8 +515,9 @@ export default function JoyAIInputArea() {
         {/* Image Preview Section */}
         {joyaiMode !== 'text-to-image' && (
           <div className="mb-4">
-            {imagePreviews.length > 0 ? (
-              <div className="flex gap-2 overflow-x-auto pb-2">
+            {/* Image Previews */}
+            {imagePreviews.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-2 mb-3">
                 {imagePreviews.map((img, idx) => (
                   <div key={idx} className="relative flex-shrink-0">
                     <img
@@ -534,37 +534,38 @@ export default function JoyAIInputArea() {
                   </div>
                 ))}
               </div>
-            ) : (
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-lg p-4 text-center transition-all ${
-                  isDragging
-                    ? 'border-pink-500 bg-pink-500/10'
-                    : 'border-card-bg hover:border-text-muted'
-                }`}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={(e) => handleFileSelect(e.target.files)}
-                  className="hidden"
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-text-secondary hover:text-pink-400 transition-colors flex items-center gap-2 mx-auto"
-                >
-                  <Upload size={20} />
-                  <span>点击上传或拖拽图片到此处</span>
-                </button>
-              </div>
             )}
+            
+            {/* Upload Area - always visible */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-lg p-4 text-center transition-all ${
+                isDragging
+                  ? 'border-pink-500 bg-pink-500/10'
+                  : 'border-card-bg hover:border-text-muted'
+              }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => handleFileSelect(e.target.files)}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-text-secondary hover:text-pink-400 transition-colors flex items-center gap-2 mx-auto"
+              >
+                <Upload size={20} />
+                <span>点击上传或拖拽图片到此处</span>
+              </button>
+            </div>
           </div>
         )}
 

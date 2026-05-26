@@ -39,7 +39,8 @@ export interface ModelConfig {
   joyaiMode: 'text-to-image' | 'edit-image' | 'understand-image' | 'spatial-transform';
   joyaiSteps: number;
   joyaiGuidanceScale: number;
-  joyaiBasesize: number;
+  joyaiWidth: number;
+  joyaiHeight: number;
   joyaiSpatialMode: 'object-move' | 'object-rotate' | 'camera-control';
   joyaiObjectPrompt: string;
   joyaiRotateView: 'front' | 'right' | 'left' | 'rear' | 'front-right' | 'front-left' | 'rear-right' | 'rear-left';

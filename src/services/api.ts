@@ -321,7 +321,8 @@ interface JoyAITextToImageParams {
   negativePrompt?: string;
   steps: number;
   guidanceScale: number;
-  basesize: number;
+  height: number;
+  width: number;
   seed?: number;
   onComplete: (imageUrl: string) => void;
   onError: (error: string) => void;
@@ -332,7 +333,8 @@ export async function joyAITextToImage({
   negativePrompt = '',
   steps,
   guidanceScale,
-  basesize,
+  height,
+  width,
   seed,
   onComplete,
   onError,
@@ -346,7 +348,8 @@ export async function joyAITextToImage({
         negative_prompt: negativePrompt,
         steps,
         guidance_scale: guidanceScale,
-        basesize,
+        height,
+        width,
         seed: seed ?? null,
       }),
     });
@@ -367,9 +370,9 @@ export async function joyAITextToImage({
 interface JoyAIEditImageParams {
   prompt: string;
   imagePath: string;
+  negativePrompt?: string;
   steps: number;
   guidanceScale: number;
-  basesize: number;
   seed?: number;
   onComplete: (imageUrl: string) => void;
   onError: (error: string) => void;
@@ -378,9 +381,9 @@ interface JoyAIEditImageParams {
 export async function joyAIEditImage({
   prompt,
   imagePath,
+  negativePrompt = '',
   steps,
   guidanceScale,
-  basesize,
   seed,
   onComplete,
   onError,
@@ -393,9 +396,9 @@ export async function joyAIEditImage({
       body: JSON.stringify({
         prompt,
         image_path: relativePath,
+        negative_prompt: negativePrompt,
         steps,
         guidance_scale: guidanceScale,
-        basesize,
         seed: seed ?? null,
       }),
     });
@@ -414,27 +417,49 @@ export async function joyAIEditImage({
 }
 
 interface JoyAIUnderstandImageParams {
-  imagePath: string;
+  imagePath?: string;
+  imagePaths?: string[];
   question: string;
+  maxNewTokens?: number;
+  temperature?: number;
+  topP?: number;
+  topK?: number;
   onComplete: (description: string) => void;
   onError: (error: string) => void;
 }
 
 export async function joyAIUnderstandImage({
   imagePath,
+  imagePaths,
   question,
+  maxNewTokens = 2048,
+  temperature = 0.7,
+  topP = 0.8,
+  topK = 50,
   onComplete,
   onError,
 }: JoyAIUnderstandImageParams): Promise<void> {
   try {
-    const relativePath = imagePath.replace(JOYAI_API_URL, '');
+    const requestBody: any = {
+      question,
+      max_new_tokens: maxNewTokens,
+      temperature,
+      top_p: topP,
+      top_k: topK,
+    };
+    
+    if (imagePaths && imagePaths.length > 0) {
+      const relativePaths = imagePaths.map(path => path.replace(JOYAI_API_URL, ''));
+      requestBody.image_paths = relativePaths;
+    } else if (imagePath) {
+      const relativePath = imagePath.replace(JOYAI_API_URL, '');
+      requestBody.image_path = relativePath;
+    }
+    
     const response = await fetch(`${JOYAI_API_URL}/joyai/understand-image`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        image_path: relativePath,
-        question,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -454,7 +479,6 @@ interface JoyAISpatialTransformParams {
   prompt: string;
   steps: number;
   guidanceScale: number;
-  basesize: number;
   seed?: number;
   onComplete: (imageUrl: string) => void;
   onError: (error: string) => void;
@@ -465,7 +489,6 @@ export async function joyAISpatialTransform({
   prompt,
   steps,
   guidanceScale,
-  basesize,
   seed,
   onComplete,
   onError,
@@ -481,7 +504,6 @@ export async function joyAISpatialTransform({
         prompt,
         steps,
         guidance_scale: guidanceScale,
-        basesize,
         seed: seed ?? null,
       }),
     });

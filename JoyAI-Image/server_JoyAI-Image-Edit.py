@@ -9,12 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
 from PIL import Image
-from io import BytesIO
-
-JOYAI_MODEL_ID = os.environ.get(
-    "JOYAI_MODEL_ID",
-    None
-)
+from pathlib import Path
 
 JOYAI_MODEL_ROOT = os.environ.get(
     "JOYAI_MODEL_ROOT",
@@ -47,7 +42,10 @@ app.mount("/joyai-images", StaticFiles(directory=OUTPUT_DIR), name="joyai-images
 app.mount("/joyai-uploads", StaticFiles(directory=UPLOAD_DIR), name="joyai-uploads")
 
 joyai_pipeline = None
+joyai_mllm = None
+joyai_processor = None
 pipeline_loaded = False
+mllm_loaded = False
 
 
 class TextToImageRequest(BaseModel):
@@ -70,10 +68,13 @@ class ImageEditRequest(BaseModel):
 
 
 class ImageUnderstandingRequest(BaseModel):
-    image_path: str
+    image_path: Optional[str] = None
+    image_paths: Optional[List[str]] = None
     question: str = "描述这张图片的内容"
-    max_new_tokens: int = 1024
+    max_new_tokens: int = 2048
     temperature: float = 0.7
+    top_p: float = 0.8
+    top_k: int = 50
 
 
 class SpatialTransformRequest(BaseModel):
@@ -106,7 +107,7 @@ def build_spatial_prompt(req: SpatialTransformRequest) -> str:
     elif req.operation_type == "rotate":
         view_map = {
             "front": "front",
-            "right": "right", 
+            "right": "right",
             "left": "left",
             "rear": "rear",
             "back": "rear",
@@ -119,67 +120,33 @@ def build_spatial_prompt(req: SpatialTransformRequest) -> str:
         return f"Rotate the {object_desc} to show the {view} side view."
     
     elif req.operation_type == "zoom":
-        direction = req.zoom_direction or "unchanged"
-        return f"Move the camera.\n- Camera rotation: Yaw 0°, Pitch 0°.\n- Camera zoom: {direction}.\n- Keep the 3D scene static; only change the viewpoint."
+        zoom = req.zoom_direction or "unchanged"
+        return f"Move the camera.\n- Camera rotation: Yaw 0°, Pitch 0°.\n- Camera zoom: {zoom}.\n- Keep the 3D scene static; only change the viewpoint."
     
     elif req.operation_type == "pan-tilt":
-        yaw = req.pan_angle or 0
-        pitch = req.tilt_angle or 0
-        direction = req.zoom_direction or "unchanged"
-        return f"Move the camera.\n- Camera rotation: Yaw {yaw}°, Pitch {pitch}°.\n- Camera zoom: {direction}.\n- Keep the 3D scene static; only change the viewpoint."
+        yaw = req.pan_angle or 0.0
+        pitch = req.tilt_angle or 0.0
+        zoom = req.zoom_direction or "unchanged"
+        return f"Move the camera.\n- Camera rotation: Yaw {yaw}°, Pitch {pitch}°.\n- Camera zoom: {zoom}.\n- Keep the 3D scene static; only change the viewpoint."
     
-    return f"Edit the image: {object_desc}"
+    return f"Apply spatial transform to the {object_desc}."
 
 
-@app.on_event("startup")
-def load_pipeline():
-    global joyai_pipeline, pipeline_loaded
-    print("Loading JoyAI Image Edit pipeline (Diffusers)...")
-    print(f"Model ID: {JOYAI_MODEL_ID}")
-    
-    try:
-        from diffusers import JoyImageEditPipeline
-        
-        if JOYAI_MODEL_ROOT and os.path.exists(JOYAI_MODEL_ROOT):
-            print(f"Loading from local path: {JOYAI_MODEL_ROOT}")
-            joyai_pipeline = JoyImageEditPipeline.from_pretrained(
-                JOYAI_MODEL_ROOT,
-                torch_dtype=torch.bfloat16
-            )
-        else:
-            print(f"Loading from HuggingFace hub: {JOYAI_MODEL_ID}")
-            joyai_pipeline = JoyImageEditPipeline.from_pretrained(
-                JOYAI_MODEL_ID,
-                torch_dtype=torch.bfloat16
-            )
-        
-        if torch.cuda.is_available():
-            joyai_pipeline = joyai_pipeline.to("cuda")
-            print("Pipeline moved to CUDA")
-        else:
-            print("CUDA not available, using CPU")
-        
-        pipeline_loaded = True
-        print("JoyAI Image Edit pipeline loaded successfully!")
-        
-    except Exception as e:
-        print(f"Error loading pipeline: {e}")
-        import traceback
-        traceback.print_exc()
-        pipeline_loaded = False
-
-
-def get_timestamp_filename(prefix="joyai", suffix="png"):
+def get_timestamp_filename(prefix: str = "joyai") -> str:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     unique_id = uuid.uuid4().hex[:6]
-    return f"{prefix}_{timestamp}_{unique_id}.{suffix}"
+    return f"{prefix}_{timestamp}_{unique_id}.png"
 
 
-def load_image_from_path(image_path: str):
-    relative_name = image_path.replace("/joyai-uploads/", "")
-    full_path = os.path.join(UPLOAD_DIR, relative_name)
+def load_image_from_path(image_path: str) -> Image.Image:
+    if image_path.startswith("/joyai-uploads/"):
+        full_path = os.path.join(UPLOAD_DIR, image_path.replace("/joyai-uploads/", ""))
+    else:
+        full_path = image_path
+    
     if not os.path.exists(full_path):
-        raise HTTPException(status_code=404, detail=f"Image not found: {relative_name}")
+        raise HTTPException(status_code=404, detail=f"Image not found: {full_path}")
+    
     return Image.open(full_path).convert("RGB")
 
 
@@ -195,6 +162,70 @@ def get_generator(seed: Optional[int] = None, device: str = "cuda"):
         generator = generator.manual_seed(int(time.time() * 1000) % (2**32))
     
     return generator
+
+
+@app.on_event("startup")
+async def startup_event():
+    global joyai_pipeline, joyai_mllm, joyai_processor, pipeline_loaded, mllm_loaded
+    
+    print("Loading JoyAI models...")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    
+    model_root = Path(JOYAI_MODEL_ROOT)
+    
+    try:
+        from diffusers import JoyImageEditPipeline
+        dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
+        
+        print(f"Loading JoyAI-Image-Edit from: {model_root}")
+        joyai_pipeline = JoyImageEditPipeline.from_pretrained(
+            str(model_root),
+            torch_dtype=dtype,
+            trust_remote_code=True
+        )
+        if device == "cuda":
+            joyai_pipeline = joyai_pipeline.to(device)
+        pipeline_loaded = True
+        print("JoyAI-Image-Edit pipeline loaded successfully!")
+    except Exception as e:
+        print(f"Failed to load JoyAI-Image-Edit: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    mllm_path = model_root.parent / "JoyAI-Image-Edit" / "JoyAI-Image-Und"
+    if not mllm_path.is_dir():
+        mllm_path = model_root / "JoyAI-Image-Und"
+    
+    if mllm_path.is_dir():
+        try:
+            from transformers import Qwen3VLForConditionalGeneration, AutoProcessor
+            
+            print(f"Loading JoyAI-Image-Und MLLM from: {mllm_path}")
+            dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
+            
+            joyai_mllm = Qwen3VLForConditionalGeneration.from_pretrained(
+                str(mllm_path),
+                torch_dtype=dtype,
+                local_files_only=True,
+                trust_remote_code=True
+            )
+            if device == "cuda":
+                joyai_mllm = joyai_mllm.to(device)
+            joyai_mllm = joyai_mllm.eval()
+            
+            joyai_processor = AutoProcessor.from_pretrained(
+                str(mllm_path),
+                local_files_only=True,
+                trust_remote_code=True
+            )
+            mllm_loaded = True
+            print("JoyAI-Image-Und MLLM loaded successfully!")
+        except Exception as e:
+            print(f"Failed to load JoyAI-Image-Und MLLM: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print(f"JoyAI-Image-Und not found at {mllm_path}, image understanding disabled")
 
 
 @app.post("/joyai/upload-images")
@@ -226,8 +257,8 @@ def health_check():
     return {
         "status": "ok",
         "pipeline_loaded": pipeline_loaded,
-        "model_id": JOYAI_MODEL_ID,
-        "model_root": JOYAI_MODEL_ROOT,
+        "mllm_loaded": mllm_loaded,
+        "model_root": str(JOYAI_MODEL_ROOT),
         "cuda_available": torch.cuda.is_available(),
         "cuda_device_count": torch.cuda.device_count() if torch.cuda.is_available() else 0
     }
@@ -236,7 +267,7 @@ def health_check():
 @app.post("/joyai/text-to-image")
 def text_to_image(req: TextToImageRequest):
     if not pipeline_loaded or joyai_pipeline is None:
-        raise HTTPException(status_code=503, detail="Pipeline is still loading, please wait.")
+        raise HTTPException(status_code=503, detail="Edit pipeline is still loading, please wait.")
     
     device = "cuda" if torch.cuda.is_available() else "cpu"
     generator = get_generator(req.seed, device)
@@ -281,7 +312,7 @@ def text_to_image(req: TextToImageRequest):
 @app.post("/joyai/edit-image")
 def edit_image(req: ImageEditRequest):
     if not pipeline_loaded or joyai_pipeline is None:
-        raise HTTPException(status_code=503, detail="Pipeline is still loading, please wait.")
+        raise HTTPException(status_code=503, detail="Edit pipeline is still loading, please wait.")
     
     input_image = load_image_from_path(req.image_path)
     
@@ -326,27 +357,110 @@ def edit_image(req: ImageEditRequest):
 
 @app.post("/joyai/understand-image")
 def understand_image(req: ImageUnderstandingRequest):
-    if not pipeline_loaded or joyai_pipeline is None:
-        raise HTTPException(status_code=503, detail="Pipeline is still loading, please wait.")
+    if not mllm_loaded or joyai_mllm is None or joyai_processor is None:
+        return {
+            "image_path": req.image_path,
+            "image_paths": req.image_paths,
+            "question": req.question,
+            "description": "图像理解模型未加载，请检查模型路径配置。",
+            "operation": "understand-image"
+        }
     
-    input_image = load_image_from_path(req.image_path)
-    
-    print(f"[Understand] Question: {req.question}")
-    print(f"[Understand] Image: {req.image_path}")
-    
-    # JoyImageEditPipeline 不支持图像理解功能
-    return {
-        "image_path": req.image_path,
-        "question": req.question,
-        "description": "图像理解功能暂时不可用，请使用其他模型进行图像描述或对话。",
-        "operation": "understand-image"
-    }
+    try:
+        # 收集所有图像路径
+        all_image_paths = []
+        if req.image_path is not None:
+            all_image_paths.append(req.image_path)
+        if req.image_paths is not None:
+            all_image_paths.extend(req.image_paths)
+        
+        if not all_image_paths:
+            raise HTTPException(status_code=400, detail="请提供 image_path 或 image_paths")
+        
+        # 加载所有图像
+        input_images = []
+        for img_path in all_image_paths:
+            input_images.append(load_image_from_path(img_path))
+        
+        print(f"[Understand] Question: {req.question}")
+        print(f"[Understand] Images: {all_image_paths}")
+        
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        
+        SYS_PROMPT = "You are a helpful assistant."
+        default_prompt = "Describe this image in detail."
+        user_text = req.question if req.question else default_prompt
+        
+        # 构建多图像内容
+        image_content = []
+        for img in input_images:
+            image_content.append({"type": "image", "image": img})
+        user_content = image_content + [{"type": "text", "text": user_text}]
+        messages = [
+            {"role": "system", "content": SYS_PROMPT},
+            {"role": "user", "content": user_content},
+        ]
+        
+        text_input = joyai_processor.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True,
+        )
+        
+        inputs = joyai_processor(
+            text=[text_input],
+            images=input_images,
+            padding=True,
+            return_tensors="pt",
+        ).to(device)
+        
+        print(f"Input tokens: {inputs['input_ids'].shape[1]}")
+        print("Generating...")
+        start_time = time.time()
+        
+        generate_kwargs = dict(
+            max_new_tokens=req.max_new_tokens,
+        )
+        if req.temperature == 0:
+            generate_kwargs["do_sample"] = False
+        else:
+            generate_kwargs["do_sample"] = True
+            generate_kwargs["temperature"] = req.temperature
+            generate_kwargs["top_p"] = req.top_p
+            generate_kwargs["top_k"] = req.top_k
+        
+        with torch.no_grad():
+            output_ids = joyai_mllm.generate(**inputs, **generate_kwargs)
+        
+        generated_ids = output_ids[:, inputs['input_ids'].shape[1]:]
+        response = joyai_processor.batch_decode(
+            generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False,
+        )[0]
+        
+        elapsed = time.time() - start_time
+        num_output_tokens = generated_ids.shape[1]
+        print(f"Output tokens: {num_output_tokens}")
+        print(f"Time: {elapsed:.2f}s ({num_output_tokens / elapsed:.1f} tok/s)")
+        
+        return {
+            "image_path": req.image_path,
+            "image_paths": req.image_paths,
+            "question": req.question,
+            "description": response,
+            "operation": "understand-image",
+            "elapsed_seconds": elapsed,
+            "output_tokens": num_output_tokens
+        }
+        
+    except Exception as e:
+        print(f"Error in understand-image: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Understanding failed: {str(e)}")
 
 
 @app.post("/joyai/spatial-transform")
 def spatial_transform(req: SpatialTransformRequest):
     if not pipeline_loaded or joyai_pipeline is None:
-        raise HTTPException(status_code=503, detail="Pipeline is still loading, please wait.")
+        raise HTTPException(status_code=503, detail="Edit pipeline is still loading, please wait.")
     
     input_image = load_image_from_path(req.image_path)
     
