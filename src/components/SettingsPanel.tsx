@@ -354,47 +354,26 @@ export default function SettingsPanel() {
               />
             </div>
 
-            {config.joyaiMode === 'edit-image' && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Sliders size={14} className="text-pink-400" />
-                  <label className="text-xs text-text-secondary">编辑强度</label>
-                  <span className="text-xs text-text-muted ml-auto">{config.joyaiStrength.toFixed(2)}</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.1"
-                  max="1.0"
-                  step="0.05"
-                  value={config.joyaiStrength}
-                  onChange={(e) => updateConfig({ joyaiStrength: parseFloat(e.target.value) })}
-                  className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-pink-400"
-                />
-                <div className="text-xs text-text-muted text-center">
-                  越高: 变化越大 | 越低: 保持原图
-                </div>
-              </div>
-            )}
+
 
             {config.joyaiMode === 'spatial-transform' && (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Move size={14} className="text-pink-400" />
-                    <label className="text-xs text-text-secondary">变换类型</label>
+                    <label className="text-xs text-text-secondary">变换模式</label>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     {[
-                      { label: '物体移动', value: 'move', icon: <ArrowLeftRight size={12} /> },
-                      { label: '物体旋转', value: 'rotate', icon: <RotateCw size={12} /> },
-                      { label: '缩放/镜头', value: 'zoom', icon: <ZoomIn size={12} /> },
-                      { label: '平移/倾斜', value: 'pan-tilt', icon: <ArrowUpDown size={12} /> },
+                      { label: '物体移动', value: 'object-move', icon: <ArrowLeftRight size={12} /> },
+                      { label: '物体旋转', value: 'object-rotate', icon: <RotateCw size={12} /> },
+                      { label: '相机控制', value: 'camera-control', icon: <ZoomIn size={12} /> },
                     ].map((op) => (
                       <button
                         key={op.value}
-                        onClick={() => updateConfig({ joyaiOperationType: op.value as any })}
-                        className={`py-2 px-3 text-xs rounded-lg transition-colors flex items-center justify-center gap-1 ${
-                          config.joyaiOperationType === op.value
+                        onClick={() => updateConfig({ joyaiSpatialMode: op.value as any })}
+                        className={`py-2 px-2 text-xs rounded-lg transition-colors flex items-center justify-center gap-1 ${
+                          config.joyaiSpatialMode === op.value
                             ? 'bg-pink-400 text-white'
                             : 'bg-card-bg text-text-secondary hover:bg-opacity-80'
                         }`}
@@ -406,7 +385,7 @@ export default function SettingsPanel() {
                   </div>
                 </div>
 
-                {(config.joyaiOperationType === 'move' || config.joyaiOperationType === 'rotate') && (
+                {config.joyaiSpatialMode === 'object-move' && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Move size={14} className="text-pink-400" />
@@ -422,117 +401,112 @@ export default function SettingsPanel() {
                   </div>
                 )}
 
-                {config.joyaiOperationType === 'move' && (
+                {config.joyaiSpatialMode === 'object-rotate' && (
                   <>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <ArrowLeftRight size={14} className="text-pink-400" />
-                        <label className="text-xs text-text-secondary">水平位移 (ΔX)</label>
-                        <span className="text-xs text-text-muted ml-auto">{config.joyaiMoveDx.toFixed(1)}</span>
+                        <Move size={14} className="text-pink-400" />
+                        <label className="text-xs text-text-secondary">目标物体描述</label>
                       </div>
                       <input
-                        type="range"
-                        min="-5"
-                        max="5"
-                        step="0.5"
-                        value={config.joyaiMoveDx}
-                        onChange={(e) => updateConfig({ joyaiMoveDx: parseFloat(e.target.value) })}
-                        className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-pink-400"
+                        type="text"
+                        value={config.joyaiObjectPrompt}
+                        onChange={(e) => updateConfig({ joyaiObjectPrompt: e.target.value })}
+                        placeholder="如: 猫、汽车、杯子..."
+                        className="w-full bg-deep-bg border border-card-bg rounded-lg px-3 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-pink-400/50"
                       />
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <ArrowUpDown size={14} className="text-pink-400" />
-                        <label className="text-xs text-text-secondary">垂直位移 (ΔY)</label>
-                        <span className="text-xs text-text-muted ml-auto">{config.joyaiMoveDy.toFixed(1)}</span>
+                        <RotateCw size={14} className="text-pink-400" />
+                        <label className="text-xs text-text-secondary">旋转视角</label>
                       </div>
-                      <input
-                        type="range"
-                        min="-5"
-                        max="5"
-                        step="0.5"
-                        value={config.joyaiMoveDy}
-                        onChange={(e) => updateConfig({ joyaiMoveDy: parseFloat(e.target.value) })}
-                        className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-pink-400"
-                      />
+                      <div className="grid grid-cols-4 gap-1">
+                        {[
+                          { label: '正', value: 'front' },
+                          { label: '右', value: 'right' },
+                          { label: '左', value: 'left' },
+                          { label: '后', value: 'rear' },
+                          { label: '前右', value: 'front-right' },
+                          { label: '前左', value: 'front-left' },
+                          { label: '后右', value: 'rear-right' },
+                          { label: '后左', value: 'rear-left' },
+                        ].map((view) => (
+                          <button
+                            key={view.value}
+                            onClick={() => updateConfig({ joyaiRotateView: view.value as any })}
+                            className={`py-1 px-2 text-xs rounded transition-colors ${
+                              config.joyaiRotateView === view.value
+                                ? 'bg-pink-400 text-white'
+                                : 'bg-card-bg text-text-secondary hover:bg-opacity-80'
+                            }`}
+                          >
+                            {view.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </>
                 )}
 
-                {config.joyaiOperationType === 'rotate' && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <RotateCw size={14} className="text-pink-400" />
-                      <label className="text-xs text-text-secondary">旋转角度</label>
-                      <span className="text-xs text-text-muted ml-auto">{config.joyaiRotateAngle}°</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="-180"
-                      max="180"
-                      step="5"
-                      value={config.joyaiRotateAngle}
-                      onChange={(e) => updateConfig({ joyaiRotateAngle: parseFloat(e.target.value) })}
-                      className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-pink-400"
-                    />
-                  </div>
-                )}
-
-                {config.joyaiOperationType === 'zoom' && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <ZoomIn size={14} className="text-pink-400" />
-                      <label className="text-xs text-text-secondary">缩放倍数</label>
-                      <span className="text-xs text-text-muted ml-auto">{config.joyaiZoomFactor.toFixed(2)}</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0.5"
-                      max="2"
-                      step="0.1"
-                      value={config.joyaiZoomFactor}
-                      onChange={(e) => updateConfig({ joyaiZoomFactor: parseFloat(e.target.value) })}
-                      className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-pink-400"
-                    />
-                    <div className="text-xs text-text-muted text-center">
-                      &lt;1: 缩小 | &gt;1: 放大
-                    </div>
-                  </div>
-                )}
-
-                {config.joyaiOperationType === 'pan-tilt' && (
+                {config.joyaiSpatialMode === 'camera-control' && (
                   <>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <ArrowLeftRight size={14} className="text-pink-400" />
-                        <label className="text-xs text-text-secondary">平移角度 (Pan)</label>
-                        <span className="text-xs text-text-muted ml-auto">{config.joyaiPanAngle}°</span>
+                        <label className="text-xs text-text-secondary">偏航角度 (Yaw)</label>
+                        <span className="text-xs text-text-muted ml-auto">{config.joyaiCameraYaw}°</span>
                       </div>
                       <input
                         type="range"
-                        min="-45"
-                        max="45"
+                        min="-180"
+                        max="180"
                         step="5"
-                        value={config.joyaiPanAngle}
-                        onChange={(e) => updateConfig({ joyaiPanAngle: parseFloat(e.target.value) })}
+                        value={config.joyaiCameraYaw}
+                        onChange={(e) => updateConfig({ joyaiCameraYaw: parseFloat(e.target.value) })}
                         className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-pink-400"
                       />
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <ArrowUpDown size={14} className="text-pink-400" />
-                        <label className="text-xs text-text-secondary">倾斜角度 (Tilt)</label>
-                        <span className="text-xs text-text-muted ml-auto">{config.joyaiTiltAngle}°</span>
+                        <label className="text-xs text-text-secondary">俯仰角度 (Pitch)</label>
+                        <span className="text-xs text-text-muted ml-auto">{config.joyaiCameraPitch}°</span>
                       </div>
                       <input
                         type="range"
-                        min="-45"
-                        max="45"
+                        min="-90"
+                        max="90"
                         step="5"
-                        value={config.joyaiTiltAngle}
-                        onChange={(e) => updateConfig({ joyaiTiltAngle: parseFloat(e.target.value) })}
+                        value={config.joyaiCameraPitch}
+                        onChange={(e) => updateConfig({ joyaiCameraPitch: parseFloat(e.target.value) })}
                         className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-pink-400"
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <ZoomIn size={14} className="text-pink-400" />
+                        <label className="text-xs text-text-secondary">缩放方向</label>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: '放大', value: 'in' },
+                          { label: '不变', value: 'unchanged' },
+                          { label: '缩小', value: 'out' },
+                        ].map((zoom) => (
+                          <button
+                            key={zoom.value}
+                            onClick={() => updateConfig({ joyaiCameraZoom: zoom.value as any })}
+                            className={`py-2 px-3 text-xs rounded-lg transition-colors ${
+                              config.joyaiCameraZoom === zoom.value
+                                ? 'bg-pink-400 text-white'
+                                : 'bg-card-bg text-text-secondary hover:bg-opacity-80'
+                            }`}
+                          >
+                            {zoom.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </>
                 )}

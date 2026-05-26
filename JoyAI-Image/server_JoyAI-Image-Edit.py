@@ -13,12 +13,12 @@ from io import BytesIO
 
 JOYAI_MODEL_ID = os.environ.get(
     "JOYAI_MODEL_ID",
-    "jdopensource/JoyAI-Image-Edit-Diffusers"
+    None
 )
 
 JOYAI_MODEL_ROOT = os.environ.get(
     "JOYAI_MODEL_ROOT",
-    None
+    "/home1/zhanghui/models/jd-opensource/JoyAI-Image-Edit-Diffusers"
 )
 
 OUTPUT_DIR = os.path.join(

@@ -367,7 +367,6 @@ export async function joyAITextToImage({
 interface JoyAIEditImageParams {
   prompt: string;
   imagePath: string;
-  strength: number;
   steps: number;
   guidanceScale: number;
   basesize: number;
@@ -379,7 +378,6 @@ interface JoyAIEditImageParams {
 export async function joyAIEditImage({
   prompt,
   imagePath,
-  strength,
   steps,
   guidanceScale,
   basesize,
@@ -395,7 +393,6 @@ export async function joyAIEditImage({
       body: JSON.stringify({
         prompt,
         image_path: relativePath,
-        strength,
         steps,
         guidance_scale: guidanceScale,
         basesize,
@@ -454,14 +451,7 @@ export async function joyAIUnderstandImage({
 
 interface JoyAISpatialTransformParams {
   imagePath: string;
-  operationType: 'move' | 'rotate' | 'zoom' | 'pan-tilt';
-  objectPrompt: string;
-  moveDx?: number;
-  moveDy?: number;
-  rotateAngle?: number;
-  zoomFactor?: number;
-  panAngle?: number;
-  tiltAngle?: number;
+  prompt: string;
   steps: number;
   guidanceScale: number;
   basesize: number;
@@ -472,14 +462,7 @@ interface JoyAISpatialTransformParams {
 
 export async function joyAISpatialTransform({
   imagePath,
-  operationType,
-  objectPrompt,
-  moveDx = 0,
-  moveDy = 0,
-  rotateAngle = 0,
-  zoomFactor = 1,
-  panAngle = 0,
-  tiltAngle = 0,
+  prompt,
   steps,
   guidanceScale,
   basesize,
@@ -494,14 +477,8 @@ export async function joyAISpatialTransform({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         image_path: relativePath,
-        operation_type: operationType,
-        object_prompt: objectPrompt,
-        move_dx: moveDx,
-        move_dy: moveDy,
-        rotate_angle: rotateAngle,
-        zoom_factor: zoomFactor,
-        pan_angle: panAngle,
-        tilt_angle: tiltAngle,
+        operation_type: 'move',
+        prompt,
         steps,
         guidance_scale: guidanceScale,
         basesize,

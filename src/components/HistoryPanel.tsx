@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, Trash2, Clock, Image as ImageIcon, X, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
 import { queryHistory, deleteHistory, HistoryRecord } from '../services/historyApi';
 import { formatDuration } from '../utils/formatDuration';
+import ImagePreviewModal from './ImagePreviewModal';
 
 interface HistoryPanelProps {
   onBack?: () => void;
@@ -17,6 +18,9 @@ export default function HistoryPanel({ onBack }: HistoryPanelProps) {
     prompt_keyword: '',
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewStartIndex, setPreviewStartIndex] = useState(0);
 
   const loadHistory = async () => {
     setLoading(true);
@@ -249,12 +253,29 @@ export default function HistoryPanel({ onBack }: HistoryPanelProps) {
                           const src = isHttpUrl || isDataUrl || img.startsWith('/') 
                             ? img 
                             : `/api/history/images/${img}`;
+                          const allImages = [
+                            ...record.request_images.map(i => {
+                              const isHttp = i.startsWith('http://') || i.startsWith('https://');
+                              const isData = i.startsWith('data:');
+                              return isHttp || isData || i.startsWith('/') ? i : `/api/history/images/${i}`;
+                            }),
+                            ...record.response_images.map(i => {
+                              const isHttp = i.startsWith('http://') || i.startsWith('https://');
+                              const isData = i.startsWith('data:');
+                              return isHttp || isData || i.startsWith('/') ? i : `/api/history/images/${i}`;
+                            })
+                          ];
                           return (
                             <img
                               key={idx}
                               src={src}
                               alt={`Request ${idx}`}
-                              className="w-24 h-24 object-cover rounded"
+                              className="w-24 h-24 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => {
+                                setPreviewImages(allImages);
+                                setPreviewStartIndex(idx);
+                                setPreviewOpen(true);
+                              }}
                             />
                           );
                         })}
@@ -282,13 +303,29 @@ export default function HistoryPanel({ onBack }: HistoryPanelProps) {
                           const src = isHttpUrl || isDataUrl || img.startsWith('/') 
                             ? img 
                             : `/api/history/images/${img}`;
+                          const allImages = [
+                            ...record.request_images.map(i => {
+                              const isHttp = i.startsWith('http://') || i.startsWith('https://');
+                              const isData = i.startsWith('data:');
+                              return isHttp || isData || i.startsWith('/') ? i : `/api/history/images/${i}`;
+                            }),
+                            ...record.response_images.map(i => {
+                              const isHttp = i.startsWith('http://') || i.startsWith('https://');
+                              const isData = i.startsWith('data:');
+                              return isHttp || isData || i.startsWith('/') ? i : `/api/history/images/${i}`;
+                            })
+                          ];
                           return (
                             <img
                               key={idx}
                               src={src}
                               alt={`Response ${idx}`}
-                              className="w-24 h-24 object-cover rounded cursor-pointer hover:opacity-80"
-                              onClick={() => window.open(src, '_blank')}
+                              className="w-24 h-24 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => {
+                                setPreviewImages(allImages);
+                                setPreviewStartIndex(record.request_images.length + idx);
+                                setPreviewOpen(true);
+                              }}
                             />
                           );
                         })}
@@ -311,6 +348,13 @@ export default function HistoryPanel({ onBack }: HistoryPanelProps) {
           </div>
         )}
       </div>
+      
+      <ImagePreviewModal
+        images={previewImages}
+        isOpen={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        startIndex={previewStartIndex}
+      />
     </div>
   );
 }

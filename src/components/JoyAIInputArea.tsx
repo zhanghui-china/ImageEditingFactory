@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Send, Loader2, X, Palette, Upload, Sparkles, Eye, Move } from 'lucide-react';
 import { useStore } from '../store';
 import {
@@ -24,6 +24,7 @@ export default function JoyAIInputArea() {
   const [files, setFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [userHasEdited, setUserHasEdited] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -36,6 +37,66 @@ export default function JoyAIInputArea() {
   const updateConfig = useStore((state) => state.updateConfig);
 
   const joyaiMode = config.joyaiMode;
+
+  const generatePromptTemplate = () => {
+    if (config.joyaiSpatialMode === 'object-move') {
+      const object = config.joyaiObjectPrompt || 'object';
+      return `Move the ${object} into the red box and finally remove the red box.`;
+    } else if (config.joyaiSpatialMode === 'object-rotate') {
+      const object = config.joyaiObjectPrompt || 'object';
+      const viewMap: Record<string, string> = {
+        'front': 'front',
+        'right': 'right',
+        'left': 'left',
+        'rear': 'rear',
+        'front-right': 'front right',
+        'front-left': 'front left',
+        'rear-right': 'rear right',
+        'rear-left': 'rear left',
+      };
+      const view = viewMap[config.joyaiRotateView] || 'front';
+      return `Rotate the ${object} to show the ${view} side view.`;
+    } else if (config.joyaiSpatialMode === 'camera-control') {
+      const yaw = config.joyaiCameraYaw;
+      const pitch = config.joyaiCameraPitch;
+      const zoom = config.joyaiCameraZoom;
+      return `Move the camera.\n- Camera rotation: Yaw ${yaw}°, Pitch ${pitch}°.\n- Camera zoom: ${zoom}.\n- Keep the 3D scene static; only change the viewpoint.`;
+    }
+    return '';
+  };
+
+  // 当配置变化时自动更新输入框
+  useEffect(() => {
+    if (joyaiMode === 'spatial-transform') {
+      const template = generatePromptTemplate();
+      if (!userHasEdited) {
+        setInput(template);
+      }
+    }
+  }, [
+    joyaiMode,
+    config.joyaiSpatialMode,
+    config.joyaiObjectPrompt,
+    config.joyaiRotateView,
+    config.joyaiCameraYaw,
+    config.joyaiCameraPitch,
+    config.joyaiCameraZoom,
+    userHasEdited
+  ]);
+
+  // 当切换模式时重置编辑状态
+  useEffect(() => {
+    if (joyaiMode !== 'spatial-transform') {
+      setUserHasEdited(false);
+    }
+  }, [joyaiMode]);
+
+  const getDefaultPrompt = () => {
+    if (!input.trim() && joyaiMode === 'spatial-transform') {
+      return generatePromptTemplate();
+    }
+    return input;
+  };
 
   const handleFileSelect = useCallback((selectedFiles: FileList | null) => {
     if (!selectedFiles) return;
@@ -59,7 +120,8 @@ export default function JoyAIInputArea() {
   };
 
   const handleSend = async () => {
-    if (!input.trim() && joyaiMode !== 'spatial-transform') return;
+    const promptToUse = getDefaultPrompt();
+    if (!promptToUse.trim() && joyaiMode !== 'spatial-transform') return;
     if (joyaiMode !== 'text-to-image' && files.length === 0) return;
     if (isLoading) return;
 
@@ -68,7 +130,7 @@ export default function JoyAIInputArea() {
     const userMessage = {
       id: Date.now().toString(),
       role: 'user' as const,
-      content: input,
+      content: promptToUse,
       images: imagePreviews.length > 0 ? imagePreviews : undefined,
       timestamp: Date.now(),
       model: currentModel,
@@ -76,13 +138,14 @@ export default function JoyAIInputArea() {
 
     addMessage(userMessage);
     setLoading(true);
-    const currentInput = input;
+    const currentInput = promptToUse;
     const currentFiles = [...files];
     setInput('');
+    setUserHasEdited(false);
 
     if (joyaiMode === 'text-to-image') {
       joyAITextToImage({
-        prompt: input,
+        prompt: promptToUse,
         steps: config.joyaiSteps,
         guidanceScale: config.joyaiGuidanceScale,
         basesize: config.joyaiBasesize,
@@ -137,9 +200,8 @@ export default function JoyAIInputArea() {
         files: currentFiles,
         onComplete: async (uploadedImageUrls) => {
           joyAIEditImage({
-            prompt: currentInput,
+            prompt: promptToUse,
             imagePath: uploadedImageUrls[0],
-            strength: config.joyaiStrength,
             steps: config.joyaiSteps,
             guidanceScale: config.joyaiGuidanceScale,
             basesize: config.joyaiBasesize,
@@ -221,7 +283,7 @@ export default function JoyAIInputArea() {
         onComplete: async (uploadedImageUrls) => {
           joyAIUnderstandImage({
             imagePath: uploadedImageUrls[0],
-            question: currentInput || '描述这张图片的内容',
+            question: promptToUse || '描述这张图片的内容',
             onComplete: async (description) => {
               const duration = Date.now() - startTime;
               const responseTime = new Date().toISOString();
@@ -300,14 +362,7 @@ export default function JoyAIInputArea() {
         onComplete: async (uploadedImageUrls) => {
           joyAISpatialTransform({
             imagePath: uploadedImageUrls[0],
-            operationType: config.joyaiOperationType,
-            objectPrompt: config.joyaiObjectPrompt,
-            moveDx: config.joyaiMoveDx,
-            moveDy: config.joyaiMoveDy,
-            rotateAngle: config.joyaiRotateAngle,
-            zoomFactor: config.joyaiZoomFactor,
-            panAngle: config.joyaiPanAngle,
-            tiltAngle: config.joyaiTiltAngle,
+            prompt: promptToUse,
             steps: config.joyaiSteps,
             guidanceScale: config.joyaiGuidanceScale,
             basesize: config.joyaiBasesize,
@@ -519,7 +574,10 @@ export default function JoyAIInputArea() {
             <textarea
               ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                setUserHasEdited(true);
+              }}
               onKeyDown={handleKeyDown}
               placeholder={
                 joyaiMode === 'text-to-image'
@@ -531,8 +589,12 @@ export default function JoyAIInputArea() {
                   : '选择空间变换类型（可选输入描述）'
               }
               className="w-full bg-deep-bg border border-card-bg rounded-xl px-4 py-3 pr-12 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-pink-500/50 resize-none transition-all"
-              rows={1}
-              style={{ minHeight: '48px', maxHeight: '120px' }}
+              rows={
+                joyaiMode === 'spatial-transform' 
+                  ? (config.joyaiSpatialMode === 'camera-control' ? 4 : 2) 
+                  : 1
+              }
+              style={{ minHeight: '48px', maxHeight: '150px' }}
               disabled={isLoading}
             />
           </div>
@@ -541,7 +603,7 @@ export default function JoyAIInputArea() {
             onClick={handleSend}
             disabled={
               isLoading ||
-              (joyaiMode !== 'spatial-transform' && !input.trim()) ||
+              (joyaiMode !== 'spatial-transform' && !input.trim() && !input.trim()) ||
               (joyaiMode !== 'text-to-image' && files.length === 0)
             }
             className="px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
