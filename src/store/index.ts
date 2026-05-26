@@ -64,6 +64,11 @@ const defaultConfig: ModelConfig = {
   hidreamStrength: 0.8,
   hidreamKeepAspect: true,
   hidreamScheduler: 'flow_match',
+  ernieWidth: 848,
+  ernieHeight: 1264,
+  ernieSteps: 50,
+  ernieGuidanceScale: 4.0,
+  ernieUsePe: true,
 };
 
 // 清除旧的 localStorage 数据，防止超大图片占用配额

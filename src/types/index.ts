@@ -4,7 +4,8 @@ export type ModelType =
   | 'sensenova-u1-fast' 
   | 'flux-klein' 
   | 'joyai-image-edit'
-  | 'hidream-o1-image';
+  | 'hidream-o1-image'
+  | 'ernie-image';
 
 export interface Message {
   id: string;
@@ -55,6 +56,11 @@ export interface ModelConfig {
   hidreamStrength: number;
   hidreamKeepAspect: boolean;
   hidreamScheduler: 'flow_match' | 'flash';
+  ernieWidth: number;
+  ernieHeight: number;
+  ernieSteps: number;
+  ernieGuidanceScale: number;
+  ernieUsePe: boolean;
 }
 
 export interface ContentBlock {

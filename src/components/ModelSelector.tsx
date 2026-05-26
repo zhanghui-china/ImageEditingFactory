@@ -1,4 +1,4 @@
-import { Bot, Sparkles, Zap, Palette, Wand2, Layers } from 'lucide-react';
+import { Bot, Sparkles, Zap, Palette, Wand2, Layers, Brain } from 'lucide-react';
 import { ModelType } from '../types';
 import { useStore } from '../store';
 
@@ -46,7 +46,7 @@ const models: ModelInfo[] = [
   },
   {
     id: 'joyai-image-edit',
-    name: 'JoyAI Image Edit',
+    name: 'JoyAI 图像编辑',
     icon: Wand2,
     color: 'text-pink-400',
     description: '图像理解与空间变换模型',
@@ -59,6 +59,14 @@ const models: ModelInfo[] = [
     color: 'text-cyan-400',
     description: 'Pixel-level 统一多模态模型',
     features: ['文生图 2048', '图像编辑', '主体驱动', '长文本渲染'],
+  },
+  {
+    id: 'ernie-image',
+    name: 'ERNIE-Image',
+    icon: Brain,
+    color: 'text-yellow-400',
+    description: '百度文心文生图模型',
+    features: ['文生图', '高分辨率', 'PE 增强'],
   },
 ];
 
@@ -75,29 +83,31 @@ export default function ModelSelector() {
 
           return (
             <button
-              key={model.id}
-              onClick={() => setCurrentModel(model.id)}
-              className={`w-full p-3 rounded-lg transition-all duration-200 group ${
-                isSelected
-                  ? 'bg-card-bg border-2 border-' + model.color.replace('text-', '')
-                  : 'bg-sidebar-bg border-2 border-transparent hover:bg-card-bg'
-              }`}
-              style={{
-                borderColor: isSelected
-                  ? model.color === 'text-sensenova-blue'
-                    ? '#3b82f6'
-                    : model.color === 'text-deepseek-purple'
-                    ? '#8b5cf6'
-                    : model.color === 'text-emerald-400'
-                    ? '#34d399'
-                    : model.color === 'text-pink-400'
-                    ? '#f472b6'
-                    : model.color === 'text-cyan-400'
-                    ? '#22d3ee'
-                    : '#f59e0b'
-                  : 'transparent',
-              }}
-            >
+                  key={model.id}
+                  onClick={() => setCurrentModel(model.id)}
+                  className={`w-full p-3 rounded-lg transition-all duration-200 group ${
+                    isSelected
+                      ? 'bg-card-bg border-2 border-' + model.color.replace('text-', '')
+                      : 'bg-sidebar-bg border-2 border-transparent hover:bg-card-bg'
+                  }`}
+                  style={{
+                    borderColor: isSelected
+                      ? model.color === 'text-sensenova-blue'
+                        ? '#3b82f6'
+                        : model.color === 'text-deepseek-purple'
+                        ? '#8b5cf6'
+                        : model.color === 'text-emerald-400'
+                        ? '#34d399'
+                        : model.color === 'text-pink-400'
+                        ? '#f472b6'
+                        : model.color === 'text-cyan-400'
+                        ? '#22d3ee'
+                        : model.color === 'text-yellow-400'
+                        ? '#facc15'
+                        : '#f59e0b'
+                      : 'transparent',
+                  }}
+                >
               <div className="flex items-start gap-3">
                 <div className={`p-2 rounded-lg bg-deep-bg ${model.color}`}>
                   <Icon size={20} />

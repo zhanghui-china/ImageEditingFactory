@@ -6,6 +6,7 @@ import InputArea from './components/InputArea';
 import FluxInputArea from './components/FluxInputArea';
 import JoyAIInputArea from './components/JoyAIInputArea';
 import HiDreamInputArea from './components/HiDreamInputArea';
+import ErnieInputArea from './components/ErnieInputArea';
 import SettingsPanel from './components/SettingsPanel';
 import ImagePreviewModal from './components/ImagePreviewModal';
 import HistoryPanel from './components/HistoryPanel';
@@ -26,6 +27,7 @@ function App() {
   const isFluxKlein = currentModel === 'flux-klein';
   const isJoyAI = currentModel === 'joyai-image-edit';
   const isHiDream = currentModel === 'hidream-o1-image';
+  const isErnieImage = currentModel === 'ernie-image';
   const apiKey = getApiKey();
 
   useEffect(() => {
@@ -118,16 +120,16 @@ function App() {
           ) : (
             <>
               <div className="flex items-center justify-between px-6 py-2 bg-sidebar-bg border-b border-card-bg">
-                <div className="text-sm text-text-muted">
-                  {currentModel === 'flux-klein' && 'FLUX.2 Klein 9B'}
-                  {currentModel === 'joyai-image-edit' && 'JoyAI 图像编辑'}
-                  {currentModel === 'hidream-o1-image' && 'HiDream-O1-Image'}
-                  {currentModel === 'sensenova-6.7-flash-lite' && 'Sensenova 6.7B'}
-                  {currentModel === 'sensenova-vlist5' && 'Sensenova V5'}
-                  {currentModel === 'sensenova-u1-fast' && 'Sensenova U1-Fast'}
-                  {currentModel === 'deepseek-chat' && 'DeepSeek V4'}
-                  {currentModel === 'deepseek-reasoner' && 'DeepSeek R1'}
-                </div>
+          <div className="text-sm text-text-muted">
+            {currentModel === 'flux-klein' && 'FLUX.2 Klein 9B'}
+            {currentModel === 'joyai-image-edit' && 'JoyAI 图像编辑'}
+            {currentModel === 'hidream-o1-image' && 'HiDream-O1-Image'}
+            {currentModel === 'sensenova-6.7-flash-lite' && 'SenseNova 6.7 Flash-Lite'}
+            {currentModel === 'sensenova-vlist5' && 'SenseNova V5'}
+            {currentModel === 'sensenova-u1-fast' && 'SenseNova U1 Fast'}
+            {currentModel === 'deepseek-v4-flash' && 'DeepSeek V4 Flash'}
+            {currentModel === 'ernie-image' && 'ERNIE-Image'}
+          </div>
                 <button
                   onClick={() => setShowHistory(true)}
                   className="flex items-center gap-2 px-3 py-1.5 bg-deep-bg hover:bg-card-bg rounded-lg transition-colors text-sm"
@@ -167,6 +169,8 @@ function App() {
                 <JoyAIInputArea />
               ) : isHiDream ? (
                 <HiDreamInputArea />
+              ) : isErnieImage ? (
+                <ErnieInputArea />
               ) : (
                 <InputArea />
               )}

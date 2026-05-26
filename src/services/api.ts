@@ -3,6 +3,7 @@ import { ModelType, Message, ContentBlock } from '../types';
 const BASE_URL = 'https://token.sensenova.cn/v1';
 const FLUX_API_URL = import.meta.env.VITE_FLUX_API_URL || 'http://192.168.199.107:8787';
 const JOYAI_API_URL = import.meta.env.VITE_JOYAI_API_URL || 'http://192.168.199.107:8788';
+const ERNIE_API_URL = import.meta.env.VITE_ERNIE_API_URL || 'http://192.168.199.207:30000';
 
 interface SendMessageParams {
   apiKey: string;
@@ -695,4 +696,59 @@ export async function hiDreamEditImage(params: Omit<HiDreamGenerateParams, 'mode
 
 export async function hiDreamSubjectDriven(params: Omit<HiDreamGenerateParams, 'mode'> & { referenceImages: File[] }) {
   return hiDreamGenerate({ ...params, mode: 'subject', images: params.referenceImages });
+}
+
+// ====================================
+// ERNIE-Image 服务
+// ====================================
+
+interface ErnieTextToImageParams {
+  prompt: string;
+  width?: number;
+  height?: number;
+  numInferenceSteps?: number;
+  guidanceScale?: number;
+  usePe?: boolean;
+  onComplete: (imageUrl: string) => void;
+  onError: (error: string) => void;
+}
+
+export async function ernieTextToImage({
+  prompt,
+  width = 848,
+  height = 1264,
+  numInferenceSteps = 50,
+  guidanceScale = 4.0,
+  usePe = true,
+  onComplete,
+  onError,
+}: ErnieTextToImageParams): Promise<void> {
+  try {
+    const response = await fetch(`${ERNIE_API_URL}/v1/images/generations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt,
+        width,
+        height,
+        num_inference_steps: numInferenceSteps,
+        guidance_scale: guidanceScale,
+        use_pe: usePe,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`请求失败: ${response.status} - ${errorText}`);
+    }
+
+    // 获取响应的图片二进制数据
+    const blob = await response.blob();
+    const imageUrl = URL.createObjectURL(blob);
+    onComplete(imageUrl);
+  } catch (error) {
+    onError(error instanceof Error ? error.message : '未知错误');
+  }
 }

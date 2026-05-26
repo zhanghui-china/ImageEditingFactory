@@ -27,6 +27,7 @@ export default function SettingsPanel() {
   const isFluxKlein = currentModel === 'flux-klein';
   const isJoyAI = currentModel === 'joyai-image-edit';
   const isHiDream = currentModel === 'hidream-o1-image';
+  const isErnieImage = currentModel === 'ernie-image';
   const isFluxImageToImage = isFluxKlein && fluxMode === 'image-to-image';
 
   return (
@@ -666,6 +667,96 @@ export default function SettingsPanel() {
                 </div>
               </>
             )}
+          </>
+        )}
+
+        {isErnieImage && (
+          <>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-yellow-400" />
+                <label className="text-xs text-text-secondary">图片宽度</label>
+                <span className="text-xs text-text-muted ml-auto">{config.ernieWidth}px</span>
+              </div>
+              <input
+                type="range"
+                min="512"
+                max="2048"
+                step="16"
+                value={config.ernieWidth}
+                onChange={(e) => updateConfig({ ernieWidth: parseInt(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-yellow-400"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-yellow-400" />
+                <label className="text-xs text-text-secondary">图片高度</label>
+                <span className="text-xs text-text-muted ml-auto">{config.ernieHeight}px</span>
+              </div>
+              <input
+                type="range"
+                min="512"
+                max="2048"
+                step="16"
+                value={config.ernieHeight}
+                onChange={(e) => updateConfig({ ernieHeight: parseInt(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-yellow-400"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-yellow-400" />
+                <label className="text-xs text-text-secondary">推理步数</label>
+                <span className="text-xs text-text-muted ml-auto">{config.ernieSteps}</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="100"
+                step="1"
+                value={config.ernieSteps}
+                onChange={(e) => updateConfig({ ernieSteps: parseInt(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-yellow-400"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-yellow-400" />
+                <label className="text-xs text-text-secondary">引导强度</label>
+                <span className="text-xs text-text-muted ml-auto">{config.ernieGuidanceScale.toFixed(1)}</span>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="20.0"
+                step="0.5"
+                value={config.ernieGuidanceScale}
+                onChange={(e) => updateConfig({ ernieGuidanceScale: parseFloat(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-yellow-400"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Brain size={14} className="text-yellow-400" />
+              <label className="text-xs text-text-secondary">PE 增强</label>
+              <button
+                onClick={() =>
+                  updateConfig({ ernieUsePe: !config.ernieUsePe })}
+                className={`ml-auto w-12 h-6 rounded-full transition-colors ${
+                  config.ernieUsePe ? 'bg-yellow-400' : 'bg-card-bg'
+                }`}
+              >
+                <div
+                  className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
+                    config.ernieUsePe ? 'translate-x-6' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
           </>
         )}
 
