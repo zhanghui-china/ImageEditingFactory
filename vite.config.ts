@@ -32,6 +32,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/flux-api/, ''),
       },
+      '/ernie-api': {
+        target: 'http://192.168.199.107:30000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ernie-api/, ''),
+      },
       '/api/history': {
         target: 'http://localhost:8789',
         changeOrigin: true,

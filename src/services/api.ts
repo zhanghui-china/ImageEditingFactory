@@ -3,7 +3,10 @@ import { ModelType, Message, ContentBlock } from '../types';
 const BASE_URL = 'https://token.sensenova.cn/v1';
 const FLUX_API_URL = import.meta.env.VITE_FLUX_API_URL || 'http://192.168.199.107:8787';
 const JOYAI_API_URL = import.meta.env.VITE_JOYAI_API_URL || 'http://192.168.199.107:8788';
-const ERNIE_API_URL = import.meta.env.VITE_ERNIE_API_URL || 'http://192.168.199.207:30000';
+// 使用 Vite 代理来避免 CORS 问题
+const ERNIE_API_URL = '/ernie-api';
+// 用于生产环境的完整 URL
+const ERNIE_API_URL_FULL = import.meta.env.VITE_ERNIE_API_URL || 'http://192.168.199.107:30000';
 
 interface SendMessageParams {
   apiKey: string;
@@ -724,6 +727,16 @@ export async function ernieTextToImage({
   onError,
 }: ErnieTextToImageParams): Promise<void> {
   try {
+    console.log('ERNIE-Image 调用参数:', {
+      url: `${ERNIE_API_URL}/v1/images/generations`,
+      prompt,
+      width,
+      height,
+      num_inference_steps: numInferenceSteps,
+      guidance_scale: guidanceScale,
+      use_pe: usePe,
+    });
+
     const response = await fetch(`${ERNIE_API_URL}/v1/images/generations`, {
       method: 'POST',
       headers: {
@@ -739,16 +752,21 @@ export async function ernieTextToImage({
       }),
     });
 
+    console.log('ERNIE-Image 响应状态:', response.status);
+
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('ERNIE-Image 错误响应:', errorText);
       throw new Error(`请求失败: ${response.status} - ${errorText}`);
     }
 
     // 获取响应的图片二进制数据
     const blob = await response.blob();
+    console.log('ERNIE-Image 响应 blob:', blob.size, 'bytes');
     const imageUrl = URL.createObjectURL(blob);
     onComplete(imageUrl);
   } catch (error) {
+    console.error('ERNIE-Image 请求异常:', error);
     onError(error instanceof Error ? error.message : '未知错误');
   }
 }
