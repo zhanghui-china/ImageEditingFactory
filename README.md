@@ -52,6 +52,7 @@
 │   │   ├── ModelSelector.tsx        # 模型选择器
 │   │   ├── ChatInterface.tsx        # 聊天界面
 │   │   ├── InputArea.tsx            # 输入区域 (其他模型)
+│   │   ├── ErnieInputArea.tsx       # 输入区域 (ERNIE-Image)
 │   │   ├── FluxInputArea.tsx        # 输入区域 (FLUX)
 │   │   ├── JoyAIInputArea.tsx       # 输入区域 (JoyAI)
 │   │   ├── HiDreamInputArea.tsx     # 输入区域 (HiDream)
@@ -71,19 +72,30 @@
 │   │   └── formatDuration.ts
 │   ├── App.tsx
 │   ├── main.tsx
-│   └── index.css
-├── JoyAI-Image/         # JoyAI 相关文件
-│   └── server_JoyAI-Image-Edit.py   # JoyAI 后端服务
-├── server.py             # FLUX 后端服务
-├── Hidream_app.py        # HiDream 后端服务
-├── server_history.py     # 历史记录服务
-├── history_service.py    # 历史记录数据库服务
+│   ├── index.css
+│   └── vite-env.d.ts
+├── flux2/               # FLUX.2 后端服务
+│   └── server.py
+├── JoyAI-Image/         # JoyAI 后端服务
+│   └── server_JoyAI-Image-Edit.py
+├── HiDream-O1-Image/    # HiDream 后端服务
+│   └── server_HiDream-01-Image.sh
+├── server_history.py    # 历史记录服务
+├── history_service.py   # 历史记录数据库服务
+├── public/
+│   └── vite.svg
 ├── vite.config.ts
 ├── tailwind.config.js
+├── postcss.config.js
 ├── tsconfig.json
+├── tsconfig.app.json
 ├── package.json
-├── .env.example          # 环境变量模板
-└── .gitignore
+├── package-lock.json
+├── index.html
+├── .env.example         # 环境变量模板
+├── .gitignore
+├── start.bat            # Windows 启动脚本
+└── start-dev.bat        # Windows 开发启动脚本
 ```
 
 ## 快速开始
