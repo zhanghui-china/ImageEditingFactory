@@ -4,6 +4,27 @@ import { useStore } from '../store';
 import { sendChatMessage, generateImage } from '../services/api';
 import { saveHistory } from '../services/historyApi';
 
+const urlToBase64 = (url: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (url.startsWith('data:')) {
+      resolve(url);
+      return;
+    }
+    fetch(url)
+      .then(response => response.blob())
+      .then(blob => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      })
+      .catch(error => {
+        console.error('urlToBase64 error:', error);
+        resolve(url);
+      });
+  });
+};
+
 export default function InputArea() {
   const [input, setInput] = useState('');
   const [images, setImages] = useState<string[]>([]);
@@ -83,6 +104,12 @@ export default function InputArea() {
         onComplete: async (generatedImages) => {
           const duration = Date.now() - startTime;
           const responseTime = new Date().toISOString();
+          
+          // 转换为base64保存
+          const savedImages = await Promise.all(
+            generatedImages.map(url => urlToBase64(url))
+          );
+
           const assistantMessage = {
             id: (Date.now() + 1).toString(),
             role: 'assistant' as const,
@@ -100,7 +127,7 @@ export default function InputArea() {
             prompt: currentInput,
             request_images: currentImages,
             response_result: 'success',
-            response_images: generatedImages,
+            response_images: savedImages,
             request_time: requestTime,
             response_time: responseTime,
             duration_ms: duration,

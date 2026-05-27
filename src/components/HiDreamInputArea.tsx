@@ -13,6 +13,23 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
+const urlToBase64 = (url: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    fetch(url)
+      .then(response => response.blob())
+      .then(blob => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      })
+      .catch(error => {
+        console.error('urlToBase64 error:', error);
+        resolve(url); // 如果失败，还是用原来的url
+      });
+  });
+};
+
 export default function HiDreamInputArea() {
   const { config, updateConfig, isLoading, setLoading, addMessage } = useStore();
   const [input, setInput] = useState('');
@@ -114,6 +131,17 @@ export default function HiDreamInputArea() {
       console.log('[HiDreamInputArea] Done');
 
       const requestImagesBase64 = await Promise.all(savedImages.map(fileToBase64));
+      
+      // 转换为base64保存
+      let savedImageUrl = imageUrl;
+      try {
+        if (imageUrl.startsWith('blob:') || imageUrl.startsWith('/')) {
+          savedImageUrl = await urlToBase64(imageUrl);
+        }
+      } catch (convertError) {
+        console.error('Failed to convert URL to base64:', convertError);
+      }
+
       console.log('[HiDream] Saving history...', {
         model: 'hidream-o1-image',
         generate_type: config.hidreamMode,
@@ -127,7 +155,7 @@ export default function HiDreamInputArea() {
         prompt: savedInput,
         request_images: requestImagesBase64,
         response_result: 'success',
-        response_images: [imageUrl!],
+        response_images: [savedImageUrl],
         request_time: requestTime,
         response_time: responseTime,
         duration_ms: duration,

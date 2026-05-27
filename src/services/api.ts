@@ -753,6 +753,7 @@ export async function ernieTextToImage({
     });
 
     console.log('ERNIE-Image 响应状态:', response.status);
+    console.log('ERNIE-Image Content-Type:', response.headers.get('content-type'));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -760,10 +761,50 @@ export async function ernieTextToImage({
       throw new Error(`请求失败: ${response.status} - ${errorText}`);
     }
 
-    // 获取响应的图片二进制数据
-    const blob = await response.blob();
-    console.log('ERNIE-Image 响应 blob:', blob.size, 'bytes');
-    const imageUrl = URL.createObjectURL(blob);
+    // 先检查响应类型
+    const contentType = response.headers.get('content-type');
+    let imageUrl: string;
+
+    if (contentType && contentType.includes('application/json')) {
+      // 如果是 JSON 响应，解析它
+      const data = await response.json();
+      console.log('ERNIE-Image JSON 响应:', data);
+      
+      // 尝试找到图片URL
+      if (data.url) {
+        // 如果返回完整URL
+        imageUrl = data.url.startsWith('http') 
+          ? data.url 
+          : `http://192.168.199.107:30000${data.url}`;
+      } else if (data.data && Array.isArray(data.data) && data.data[0]) {
+        // 如果是 OpenAI 格式
+        const imageItem = data.data[0];
+        if (imageItem.url) {
+          let url = imageItem.url;
+          // 处理完整URL为代理路径
+          if (url.startsWith('http://192.168.199.107:30000') || 
+              url.startsWith('https://192.168.199.107:30000')) {
+            url = url.replace(/^https?:\/\/192\.168\.199\.107:30000/, '/ernie-images');
+          } else if (url.startsWith('/v1/images')) {
+            url = `/ernie-images${url}`;
+          }
+          imageUrl = url;
+        } else if (imageItem.b64_json) {
+          // base64格式
+          imageUrl = `data:image/jpeg;base64,${imageItem.b64_json}`;
+        } else {
+          throw new Error('未知的响应格式');
+        }
+      } else {
+        throw new Error('响应格式不正确');
+      }
+    } else {
+      // 如果是直接的图片数据
+      const blob = await response.blob();
+      console.log('ERNIE-Image 响应 blob:', blob.size, 'bytes');
+      imageUrl = URL.createObjectURL(blob);
+    }
+
     onComplete(imageUrl);
   } catch (error) {
     console.error('ERNIE-Image 请求异常:', error);

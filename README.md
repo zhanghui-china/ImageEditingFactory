@@ -26,6 +26,7 @@
 - 📋 **历史查询** - 保存所有模型的交互历史，支持按模型和类型筛选
 - ⏱️ **时间统计** - 显示每次交互的耗时
 - 🔍 **可折叠参数面板** - 灵活的参数配置界面
+- 💾 **图片持久化保存** - 所有生成的图片都会转换为 base64 格式保存到历史记录，确保刷新页面后仍能正常查看
 
 ## 技术栈
 
@@ -102,7 +103,7 @@ cp .env.example .env
 VITE_SENSENOVA_API_KEY=sk-your-api-key-here
 
 # FLUX API Server URL (默认配置)
-VITE_FLUX_API_URL=http://192.168.199.107:8787
+VITE_FLUX_API_URL=http://[DGX Spark IP]:8787
 ```
 
 ### 2. 前端启动
@@ -137,6 +138,8 @@ python server_history.py
 如果你需要使用 FLUX 模型，需要在 GPU 服务器上部署后端：
 
 ```bash
+conda activate flux2
+
 # 安装 Python 依赖
 pip install fastapi uvicorn python-multipart modelscope torch pillow
 
@@ -144,16 +147,21 @@ pip install fastapi uvicorn python-multipart modelscope torch pillow
 export KLEIN_MODEL_PATH=/path/to/your/FLUX.2-klein-9B
 
 # 启动服务
+cd ~/flux2
 python server.py
 ```
 
 FLUX 后端会在 `http://0.0.0.0:8787` 启动。
 
+部署 FLUX.2-klein-9B：https://zhuanlan.zhihu.com/p/2041402789159556947
+
 #### JoyAI 后端
 
 ```bash
+conda activate joyai2
+
 # 切换到 JoyAI 目录
-cd JoyAI-Image
+cd ~/JoyAI-Image
 
 # 安装依赖并启动 JoyAI 服务
 python server_JoyAI-Image-Edit.py
@@ -161,14 +169,37 @@ python server_JoyAI-Image-Edit.py
 
 服务会在 `http://0.0.0.0:8788` 启动。
 
+部署 JoyAI-Image-Edit ：https://zhuanlan.zhihu.com/p/2026607079041897539
+
 #### HiDream 后端
 
 ```bash
+conda activate hidream
+
 # 启动 HiDream 服务
-python Hidream_app.py
+cd ~/HiDream-O1-Image
+./server_HiDream-01-Image.sh
 ```
 
 服务会在 `http://0.0.0.0:7860` 启动。
+
+部署 HiDream-O1-Image：https://zhuanlan.zhihu.com/p/2036964309499126264
+
+#### ERNIE-Image 后端
+
+```bash
+conda activate ernie
+
+# 启动 HiDream 服务
+cd ~/HiDream-O1-Image
+sglang serve --model-path /home1/zhanghui/models/PaddlePaddle/ERNIE-Image --host 0.0.0.0 --port 30000
+```
+
+服务会在 `http://0.0.0.0:30000` 启动。
+
+部署 ERNIE-Image：https://zhuanlan.zhihu.com/p/2033537436198904369
+
+
 
 ## 使用说明
 
@@ -239,14 +270,30 @@ python Hidream_app.py
 
 ### ERNIE-Image
 
-1. 选择 **ERNIE-Image** 模型
-2. 输入描述你想要生成的图片的提示词
-3. 可以在左侧设置面板调整参数：
-   - 图片宽度/高度
-   - 推理步数
-   - 引导强度
-   - PE 增强开关
-4. 点击发送生成图片
+ERNIE-Image 是百度文心一格的文生图模型，需要后端服务支持。
+
+**部署步骤：**
+
+1. 在 GPU 服务器上启动 ERNIE-Image 后端服务：
+
+```bash
+# 确保服务运行在 http://192.168.199.107:30000
+# 服务会自动处理 CORS 跨域问题
+```
+
+2. 在前端 `.env` 文件中配置服务器地址（如需要）
+
+3. 使用说明：
+   - 选择 **ERNIE-Image** 模型
+   - 输入描述你想要生成的图片的提示词
+   - 可以在左侧设置面板调整参数：
+     - 图片宽度/高度
+     - 推理步数
+     - 引导强度
+     - PE 增强开关
+   - 点击发送生成图片
+
+**注意：** ERNIE-Image 后端返回的是 OpenAI 格式的 JSON 响应，前端会自动解析并显示图片。生成的图片会以 base64 格式保存到历史记录中，确保刷新页面后仍能正常查看。
 
 ### 历史查询
 
@@ -317,6 +364,40 @@ GET /health
 2. **FLUX 后端** - 确保后端服务运行且网络可达
 3. **浏览器刷新** - 修改 `.env` 后需要重启开发服务器并刷新浏览器
 4. **流式响应** - 保持连接稳定以获得完整的流式体验
+5. **图片保存** - 所有生成的图片都会自动转换为 base64 格式保存到历史记录，即使刷新页面也能正常查看
+6. **跨域问题** - 前端通过 Vite 代理配置解决所有后端服务的 CORS 跨域问题，无需后端配置 CORS
+
+## 故障排除
+
+### 图片无法保存或显示
+
+如果历史记录中的图片无法正常显示，可能是以下原因：
+
+1. **图片还在生成中** - 等待图片完全生成后再查看
+2. **网络问题** - 确保开发服务器和后端服务都正常运行
+3. **代理配置** - 检查 `vite.config.ts` 中的代理配置是否正确
+
+**解决方案：**
+
+- 重启前端开发服务器：`npm run dev`
+- 确保后端服务正在运行
+- 检查浏览器控制台是否有错误信息
+- 清除浏览器缓存后重试
+
+### CORS 跨域错误
+
+如果遇到跨域错误，确保：
+
+1. `vite.config.ts` 中已配置对应的代理规则
+2. 后端服务已启动并可访问
+3. 代理目标地址正确（检查 IP 和端口）
+
+### 后端服务连接失败
+
+1. 检查后端服务是否启动
+2. 验证 IP 地址和端口配置
+3. 确保防火墙允许相应端口的访问
+4. 测试后端服务是否可访问：`curl http://192.168.199.107:8787/health`
 
 ## 开发
 

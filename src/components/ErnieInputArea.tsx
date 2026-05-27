@@ -13,6 +13,23 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
+const urlToBase64 = (url: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    fetch(url)
+      .then(response => response.blob())
+      .then(blob => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      })
+      .catch(error => {
+        console.error('urlToBase64 error:', error);
+        resolve(url); // 如果失败，还是用原来的url
+      });
+  });
+};
+
 export default function ErnieInputArea() {
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -53,6 +70,17 @@ export default function ErnieInputArea() {
       onComplete: async (imageUrl) => {
         const duration = Date.now() - startTime;
         const responseTime = new Date().toISOString();
+        
+        // 转换为base64保存
+        let savedImageUrl = imageUrl;
+        try {
+          if (imageUrl.startsWith('blob:') || imageUrl.startsWith('/ernie-images')) {
+            savedImageUrl = await urlToBase64(imageUrl);
+          }
+        } catch (convertError) {
+          console.error('Failed to convert URL to base64:', convertError);
+        }
+
         const assistantMessage = {
           id: (Date.now() + 1).toString(),
           role: 'assistant' as const,
@@ -70,7 +98,7 @@ export default function ErnieInputArea() {
           prompt: currentInput,
           request_images: [],
           response_result: 'success',
-          response_images: [imageUrl],
+          response_images: [savedImageUrl],
           request_time: requestTime,
           response_time: responseTime,
           duration_ms: duration,
