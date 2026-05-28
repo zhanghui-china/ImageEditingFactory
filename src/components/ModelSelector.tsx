@@ -76,6 +76,14 @@ const models: ModelInfo[] = [
     description: '通义千问图像编辑模型',
     features: ['本地 GPU 推理', '图像编辑', '文生图', '高质量输出'],
   },
+  {
+    id: 'firered-image-edit',
+    name: 'FireRed-Image-Edit',
+    icon: ImagePlus,
+    color: 'text-red-400',
+    description: 'FireRed 图像编辑模型',
+    features: ['本地 GPU 推理', '图像编辑', 'vllm-omni', '高质量输出'],
+  },
 ];
 
 export default function ModelSelector() {

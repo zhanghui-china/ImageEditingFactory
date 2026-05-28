@@ -29,6 +29,7 @@ export default function SettingsPanel() {
   const isHiDream = currentModel === 'hidream-o1-image';
   const isErnieImage = currentModel === 'ernie-image';
   const isQwenImageEdit = currentModel === 'qwen-image-edit-2511';
+  const isFireRedImageEdit = currentModel === 'firered-image-edit';
   const isFluxImageToImage = isFluxKlein && fluxMode === 'image-to-image';
 
   return (
@@ -828,6 +829,61 @@ export default function SettingsPanel() {
                 value={config.qwenSeed}
                 onChange={(e) => updateConfig({ qwenSeed: parseInt(e.target.value) })}
                 className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-orange-400"
+              />
+            </div>
+          </>
+        )}
+
+        {isFireRedImageEdit && (
+          <>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-red-400" />
+                <label className="text-xs text-text-secondary">推理步数</label>
+                <span className="text-xs text-text-muted ml-auto">{config.fireredSteps}</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="100"
+                step="1"
+                value={config.fireredSteps}
+                onChange={(e) => updateConfig({ fireredSteps: parseInt(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-red-400"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-red-400" />
+                <label className="text-xs text-text-secondary">引导强度</label>
+                <span className="text-xs text-text-muted ml-auto">{config.fireredGuidanceScale.toFixed(1)}</span>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="10.0"
+                step="0.5"
+                value={config.fireredGuidanceScale}
+                onChange={(e) => updateConfig({ fireredGuidanceScale: parseFloat(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-red-400"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-red-400" />
+                <label className="text-xs text-text-secondary">随机种子</label>
+                <span className="text-xs text-text-muted ml-auto">{config.fireredSeed}</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="9999"
+                step="1"
+                value={config.fireredSeed}
+                onChange={(e) => updateConfig({ fireredSeed: parseInt(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-red-400"
               />
             </div>
           </>

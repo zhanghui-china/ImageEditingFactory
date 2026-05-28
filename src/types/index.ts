@@ -3,10 +3,11 @@ export type ModelType =
   | 'deepseek-v4-flash' 
   | 'sensenova-u1-fast' 
   | 'flux-klein' 
-  | 'joyai-image-edit'
-  | 'hidream-o1-image'
-  | 'ernie-image'
-  | 'qwen-image-edit-2511';
+  | 'joyai-image-edit' 
+  | 'hidream-o1-image' 
+  | 'ernie-image' 
+  | 'qwen-image-edit-2511'
+  | 'firered-image-edit';
 
 export interface Message {
   id: string;
@@ -66,6 +67,9 @@ export interface ModelConfig {
   qwenGuidanceScale: number;
   qwenTrueCfgScale: number;
   qwenSeed: number;
+  fireredSteps: number;
+  fireredGuidanceScale: number;
+  fireredSeed: number;
 }
 
 export interface ContentBlock {

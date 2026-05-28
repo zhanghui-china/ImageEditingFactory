@@ -76,6 +76,9 @@ const defaultConfig: ModelConfig = {
   qwenGuidanceScale: 1.0,
   qwenTrueCfgScale: 4.0,
   qwenSeed: 0,
+  fireredSteps: 50,
+  fireredGuidanceScale: 1.0,
+  fireredSeed: 42,
 };
 
 export const useStore = create<AppState>()(

@@ -8,6 +8,7 @@ import JoyAIInputArea from './components/JoyAIInputArea';
 import HiDreamInputArea from './components/HiDreamInputArea';
 import ErnieInputArea from './components/ErnieInputArea';
 import QwenInputArea from './components/QwenInputArea';
+import FireRedInputArea from './components/FireRedInputArea';
 import SettingsPanel from './components/SettingsPanel';
 import ImagePreviewModal from './components/ImagePreviewModal';
 import HistoryPanel from './components/HistoryPanel';
@@ -30,6 +31,7 @@ function App() {
   const isHiDream = currentModel === 'hidream-o1-image';
   const isErnieImage = currentModel === 'ernie-image';
   const isQwenImageEdit = currentModel === 'qwen-image-edit-2511';
+  const isFireRedImageEdit = currentModel === 'firered-image-edit';
   const apiKey = getApiKey();
 
   useEffect(() => {
@@ -132,6 +134,7 @@ function App() {
             {currentModel === 'deepseek-v4-flash' && 'DeepSeek V4 Flash'}
             {currentModel === 'ernie-image' && 'ERNIE-Image'}
             {currentModel === 'qwen-image-edit-2511' && 'Qwen-Image-Edit-2511'}
+            {currentModel === 'firered-image-edit' && 'FireRed-Image-Edit'}
           </div>
                 <button
                   onClick={() => setShowHistory(true)}
@@ -176,6 +179,8 @@ function App() {
                 <ErnieInputArea />
               ) : isQwenImageEdit ? (
                 <QwenInputArea />
+              ) : isFireRedImageEdit ? (
+                <FireRedInputArea />
               ) : (
                 <InputArea />
               )}

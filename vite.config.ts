@@ -52,6 +52,16 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/qwen-images/, ''),
       },
+      '/firered-api': {
+        target: 'http://192.168.199.107:6000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/firered-api/, ''),
+      },
+      '/firered-images': {
+        target: 'http://192.168.199.107:6000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/firered-images/, ''),
+      },
       '/api/history': {
         target: 'http://localhost:8789',
         changeOrigin: true,
