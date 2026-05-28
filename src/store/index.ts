@@ -75,25 +75,7 @@ const defaultConfig: ModelConfig = {
   qwenSeed: 0,
 };
 
-// 清除旧的 localStorage 数据，防止超大图片占用配额
-try {
-  const oldData = localStorage.getItem('sensenova-storage');
-  if (oldData) {
-    try {
-      const parsed = JSON.parse(oldData);
-      // 如果有旧的 messages，删除它们
-      if (parsed.state && parsed.state.messagesByModel) {
-        localStorage.removeItem('sensenova-storage');
-        console.log('[Store] Cleared old storage with large messages');
-      }
-    } catch (e) {
-      // 无效的 JSON，直接删除
-      localStorage.removeItem('sensenova-storage');
-    }
-  }
-} catch (e) {
-  // 如果 localStorage 访问失败，忽略
-}
+
 
 export const useStore = create<AppState>()(
   persist(
@@ -127,10 +109,15 @@ export const useStore = create<AppState>()(
         set((state) => {
           const model = message.model || state.currentModel;
           const currentMessages = state.messagesByModel[model] || [];
+          const MAX_MESSAGES_PER_MODEL = 20;
+          let newMessages = [...currentMessages, message];
+          if (newMessages.length > MAX_MESSAGES_PER_MODEL) {
+            newMessages = newMessages.slice(-MAX_MESSAGES_PER_MODEL);
+          }
           return {
             messagesByModel: {
               ...state.messagesByModel,
-              [model]: [...currentMessages, message],
+              [model]: newMessages,
             },
           };
         }),
@@ -189,13 +176,13 @@ export const useStore = create<AppState>()(
         currentModel: state.currentModel,
         config: state.config,
         fluxMode: state.fluxMode,
+        messagesByModel: state.messagesByModel,
       }),
       merge: (persistedState, currentState) => {
         const ps = persistedState as Partial<AppState>;
         return {
           ...currentState,
           ...ps,
-          messagesByModel: {}, // 永远不从存储加载消息
           config: {
             ...currentState.config,
             ...(ps.config || {}),
