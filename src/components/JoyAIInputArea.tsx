@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Send, Loader2, X, Palette, Upload, Sparkles, Eye, Move } from 'lucide-react';
+import { Send, Loader2, X, Palette, Upload, Sparkles, Eye, Move, StopCircle } from 'lucide-react';
 import { useStore } from '../store';
 import {
   joyAITextToImage,
@@ -52,6 +52,8 @@ export default function JoyAIInputArea() {
   const setError = useStore((state) => state.setError);
   const addMessage = useStore((state) => state.addMessage);
   const updateConfig = useStore((state) => state.updateConfig);
+  const setAbortController = useStore((state) => state.setAbortController);
+  const cancelRequest = useStore((state) => state.cancelRequest);
 
   const joyaiMode = config.joyaiMode;
 
@@ -142,6 +144,9 @@ export default function JoyAIInputArea() {
     if (joyaiMode !== 'text-to-image' && files.length === 0) return;
     if (isLoading) return;
 
+    const abortController = new AbortController();
+    setAbortController(abortController);
+
     const startTime = Date.now();
     const requestTime = new Date().toISOString();
     const userMessage = {
@@ -167,6 +172,7 @@ export default function JoyAIInputArea() {
         guidanceScale: config.joyaiGuidanceScale,
         height: config.joyaiHeight,
         width: config.joyaiWidth,
+        signal: abortController.signal,
         onComplete: async (imageUrl) => {
           const duration = Date.now() - startTime;
           const responseTime = new Date().toISOString();
@@ -193,6 +199,7 @@ export default function JoyAIInputArea() {
           };
           addMessage(assistantMessage);
           setLoading(false);
+          setAbortController(null);
           const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
           saveHistory({
             model: currentModel,
@@ -209,8 +216,12 @@ export default function JoyAIInputArea() {
         onError: async (error) => {
           const duration = Date.now() - startTime;
           const responseTime = new Date().toISOString();
-          setError(error);
+          // 忽略 AbortError
+          if (error !== '请求已取消' && !(error instanceof Error && error.name === 'AbortError')) {
+            setError(error);
+          }
           setLoading(false);
+          setAbortController(null);
           const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
           saveHistory({
             model: currentModel,
@@ -228,12 +239,14 @@ export default function JoyAIInputArea() {
     } else if (joyaiMode === 'edit-image') {
       joyAIUploadImages({
         files: currentFiles,
+        signal: abortController.signal,
         onComplete: async (uploadedImageUrls) => {
           joyAIEditImage({
             prompt: promptToUse,
             imagePath: uploadedImageUrls[0],
             steps: config.joyaiSteps,
             guidanceScale: config.joyaiGuidanceScale,
+            signal: abortController.signal,
             onComplete: async (imageUrl) => {
               const duration = Date.now() - startTime;
               const responseTime = new Date().toISOString();
@@ -260,6 +273,7 @@ export default function JoyAIInputArea() {
               };
               addMessage(assistantMessage);
               setLoading(false);
+              setAbortController(null);
               setFiles([]);
               setImagePreviews([]);
               const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
@@ -278,8 +292,12 @@ export default function JoyAIInputArea() {
             onError: async (error) => {
               const duration = Date.now() - startTime;
               const responseTime = new Date().toISOString();
-              setError(error);
+              // 忽略 AbortError
+              if (error !== '请求已取消' && !(error instanceof Error && error.name === 'AbortError')) {
+                setError(error);
+              }
               setLoading(false);
+              setAbortController(null);
               setFiles([]);
               setImagePreviews([]);
               const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
@@ -300,8 +318,12 @@ export default function JoyAIInputArea() {
         onError: async (error) => {
           const duration = Date.now() - startTime;
           const responseTime = new Date().toISOString();
-          setError(error);
+          // 忽略 AbortError
+          if (error !== '请求已取消' && !(error instanceof Error && error.name === 'AbortError')) {
+            setError(error);
+          }
           setLoading(false);
+          setAbortController(null);
           setFiles([]);
           setImagePreviews([]);
           const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
@@ -321,10 +343,12 @@ export default function JoyAIInputArea() {
     } else if (joyaiMode === 'understand-image') {
       joyAIUploadImages({
         files: currentFiles,
+        signal: abortController.signal,
         onComplete: async (uploadedImageUrls) => {
           joyAIUnderstandImage({
             imagePaths: uploadedImageUrls,
             question: promptToUse || '描述这张图片的内容',
+            signal: abortController.signal,
             onComplete: async (description) => {
               const duration = Date.now() - startTime;
               const responseTime = new Date().toISOString();
@@ -339,6 +363,7 @@ export default function JoyAIInputArea() {
               };
               addMessage(assistantMessage);
               setLoading(false);
+              setAbortController(null);
               setFiles([]);
               setImagePreviews([]);
               const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
@@ -357,8 +382,12 @@ export default function JoyAIInputArea() {
             onError: async (error) => {
               const duration = Date.now() - startTime;
               const responseTime = new Date().toISOString();
-              setError(error);
+              // 忽略 AbortError
+              if (error !== '请求已取消' && !(error instanceof Error && error.name === 'AbortError')) {
+                setError(error);
+              }
               setLoading(false);
+              setAbortController(null);
               setFiles([]);
               setImagePreviews([]);
               const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
@@ -379,8 +408,12 @@ export default function JoyAIInputArea() {
         onError: async (error) => {
           const duration = Date.now() - startTime;
           const responseTime = new Date().toISOString();
-          setError(error);
+          // 忽略 AbortError
+          if (error !== '请求已取消' && !(error instanceof Error && error.name === 'AbortError')) {
+            setError(error);
+          }
           setLoading(false);
+          setAbortController(null);
           setFiles([]);
           setImagePreviews([]);
           const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
@@ -400,12 +433,14 @@ export default function JoyAIInputArea() {
     } else if (joyaiMode === 'spatial-transform') {
       joyAIUploadImages({
         files: currentFiles,
+        signal: abortController.signal,
         onComplete: async (uploadedImageUrls) => {
           joyAISpatialTransform({
             imagePath: uploadedImageUrls[0],
             prompt: promptToUse,
             steps: config.joyaiSteps,
             guidanceScale: config.joyaiGuidanceScale,
+            signal: abortController.signal,
             onComplete: async (imageUrl) => {
               const duration = Date.now() - startTime;
               const responseTime = new Date().toISOString();
@@ -432,6 +467,7 @@ export default function JoyAIInputArea() {
               };
               addMessage(assistantMessage);
               setLoading(false);
+              setAbortController(null);
               setFiles([]);
               setImagePreviews([]);
               const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
@@ -450,8 +486,12 @@ export default function JoyAIInputArea() {
             onError: async (error) => {
               const duration = Date.now() - startTime;
               const responseTime = new Date().toISOString();
-              setError(error);
+              // 忽略 AbortError
+              if (error !== '请求已取消' && !(error instanceof Error && error.name === 'AbortError')) {
+                setError(error);
+              }
               setLoading(false);
+              setAbortController(null);
               setFiles([]);
               setImagePreviews([]);
               const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
@@ -472,8 +512,12 @@ export default function JoyAIInputArea() {
         onError: async (error) => {
           const duration = Date.now() - startTime;
           const responseTime = new Date().toISOString();
-          setError(error);
+          // 忽略 AbortError
+          if (error !== '请求已取消' && !(error instanceof Error && error.name === 'AbortError')) {
+            setError(error);
+          }
           setLoading(false);
+          setAbortController(null);
           setFiles([]);
           setImagePreviews([]);
           const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
@@ -653,22 +697,27 @@ export default function JoyAIInputArea() {
             />
           </div>
 
-          <button
-            onClick={handleSend}
-            disabled={
-              isLoading ||
-              (joyaiMode !== 'spatial-transform' && !input.trim() && !input.trim()) ||
-              (joyaiMode !== 'text-to-image' && files.length === 0)
-            }
-            className="px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-          >
-            {isLoading ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
+          {isLoading ? (
+            <button
+              onClick={cancelRequest}
+              className="px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-medium hover:opacity-90 transition-all flex items-center gap-2"
+            >
+              <StopCircle size={18} />
+              <span className="hidden sm:inline">停止</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleSend}
+              disabled={
+                (joyaiMode !== 'spatial-transform' && !input.trim() && !input.trim()) ||
+                (joyaiMode !== 'text-to-image' && files.length === 0)
+              }
+              className="px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+            >
               <Send size={18} />
-            )}
-            <span className="hidden sm:inline">生成</span>
-          </button>
+              <span className="hidden sm:inline">生成</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

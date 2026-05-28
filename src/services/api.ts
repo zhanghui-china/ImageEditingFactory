@@ -27,6 +27,7 @@ interface SendMessageParams {
   onChunk: (content: string, reasoning?: string) => void;
   onComplete: (fullContent: string, reasoning?: string) => void;
   onError: (error: string) => void;
+  signal?: AbortSignal;
 }
 
 export async function sendChatMessage({
@@ -37,6 +38,7 @@ export async function sendChatMessage({
   onChunk,
   onComplete,
   onError,
+  signal,
 }: SendMessageParams): Promise<void> {
   try {
     const formattedMessages = messages.map((msg) => {
@@ -77,6 +79,7 @@ export async function sendChatMessage({
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify(requestBody),
+      signal,
     });
 
     if (!response.ok) {
@@ -142,6 +145,7 @@ interface GenerateFluxKleinParams {
   seed?: number;
   onComplete: (imageUrl: string) => void;
   onError: (error: string) => void;
+  signal?: AbortSignal;
 }
 
 export async function generateFluxKlein({
@@ -153,6 +157,7 @@ export async function generateFluxKlein({
   seed,
   onComplete,
   onError,
+  signal,
 }: GenerateFluxKleinParams): Promise<void> {
   try {
     const response = await fetch(`${FLUX_API_URL}/generate`, {
@@ -168,6 +173,7 @@ export async function generateFluxKlein({
         guidance_scale: guidanceScale,
         seed: seed ?? null,
       }),
+      signal,
     });
 
     if (!response.ok) {
@@ -187,12 +193,14 @@ interface UploadImagesParams {
   files: File[];
   onComplete: (imageUrls: string[]) => void;
   onError: (error: string) => void;
+  signal?: AbortSignal;
 }
 
 export async function uploadImages({
   files,
   onComplete,
   onError,
+  signal,
 }: UploadImagesParams): Promise<void> {
   try {
     const formData = new FormData();
@@ -201,6 +209,7 @@ export async function uploadImages({
     const response = await fetch(`${FLUX_API_URL}/upload-images`, {
       method: 'POST',
       body: formData,
+      signal,
     });
 
     if (!response.ok) {
@@ -227,6 +236,7 @@ interface EditFluxKleinParams {
   seed?: number;
   onComplete: (imageUrl: string) => void;
   onError: (error: string) => void;
+  signal?: AbortSignal;
 }
 
 export async function editFluxKlein({
@@ -240,6 +250,7 @@ export async function editFluxKlein({
   seed,
   onComplete,
   onError,
+  signal,
 }: EditFluxKleinParams): Promise<void> {
   try {
     // Convert image paths to relative paths
@@ -260,6 +271,7 @@ export async function editFluxKlein({
         strength,
         seed: seed ?? null,
       }),
+      signal,
     });
 
     if (!response.ok) {
@@ -282,6 +294,7 @@ interface GenerateImageParams {
   n: number;
   onComplete: (images: string[]) => void;
   onError: (error: string) => void;
+  signal?: AbortSignal;
 }
 
 export async function generateImage({
@@ -291,6 +304,7 @@ export async function generateImage({
   n,
   onComplete,
   onError,
+  signal,
 }: GenerateImageParams): Promise<void> {
   try {
     const response = await fetch(`${BASE_URL}/images/generations`, {
@@ -305,6 +319,7 @@ export async function generateImage({
         size,
         n,
       }),
+      signal,
     });
 
     if (!response.ok) {
@@ -334,6 +349,7 @@ interface JoyAITextToImageParams {
   seed?: number;
   onComplete: (imageUrl: string) => void;
   onError: (error: string) => void;
+  signal?: AbortSignal;
 }
 
 export async function joyAITextToImage({
@@ -346,6 +362,7 @@ export async function joyAITextToImage({
   seed,
   onComplete,
   onError,
+  signal,
 }: JoyAITextToImageParams): Promise<void> {
   try {
     const response = await fetch(`${JOYAI_API_URL}/joyai/text-to-image`, {
@@ -360,6 +377,7 @@ export async function joyAITextToImage({
         width,
         seed: seed ?? null,
       }),
+      signal,
     });
 
     if (!response.ok) {
@@ -384,6 +402,7 @@ interface JoyAIEditImageParams {
   seed?: number;
   onComplete: (imageUrl: string) => void;
   onError: (error: string) => void;
+  signal?: AbortSignal;
 }
 
 export async function joyAIEditImage({
@@ -395,6 +414,7 @@ export async function joyAIEditImage({
   seed,
   onComplete,
   onError,
+  signal,
 }: JoyAIEditImageParams): Promise<void> {
   try {
     const relativePath = imagePath.replace(JOYAI_API_URL, '');
@@ -409,6 +429,7 @@ export async function joyAIEditImage({
         guidance_scale: guidanceScale,
         seed: seed ?? null,
       }),
+      signal,
     });
 
     if (!response.ok) {
@@ -434,6 +455,7 @@ interface JoyAIUnderstandImageParams {
   topK?: number;
   onComplete: (description: string) => void;
   onError: (error: string) => void;
+  signal?: AbortSignal;
 }
 
 export async function joyAIUnderstandImage({
@@ -446,6 +468,7 @@ export async function joyAIUnderstandImage({
   topK = 50,
   onComplete,
   onError,
+  signal,
 }: JoyAIUnderstandImageParams): Promise<void> {
   try {
     const requestBody: any = {
@@ -468,6 +491,7 @@ export async function joyAIUnderstandImage({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody),
+      signal,
     });
 
     if (!response.ok) {
@@ -490,6 +514,7 @@ interface JoyAISpatialTransformParams {
   seed?: number;
   onComplete: (imageUrl: string) => void;
   onError: (error: string) => void;
+  signal?: AbortSignal;
 }
 
 export async function joyAISpatialTransform({
@@ -500,6 +525,7 @@ export async function joyAISpatialTransform({
   seed,
   onComplete,
   onError,
+  signal,
 }: JoyAISpatialTransformParams): Promise<void> {
   try {
     const relativePath = imagePath.replace(JOYAI_API_URL, '');
@@ -514,6 +540,7 @@ export async function joyAISpatialTransform({
         guidance_scale: guidanceScale,
         seed: seed ?? null,
       }),
+      signal,
     });
 
     if (!response.ok) {
@@ -533,12 +560,14 @@ interface JoyAIUploadImagesParams {
   files: File[];
   onComplete: (imageUrls: string[]) => void;
   onError: (error: string) => void;
+  signal?: AbortSignal;
 }
 
 export async function joyAIUploadImages({
   files,
   onComplete,
   onError,
+  signal,
 }: JoyAIUploadImagesParams): Promise<void> {
   try {
     const formData = new FormData();
@@ -547,6 +576,7 @@ export async function joyAIUploadImages({
     const response = await fetch(`${JOYAI_API_URL}/joyai/upload-images`, {
       method: 'POST',
       body: formData,
+      signal,
     });
 
     if (!response.ok) {
@@ -593,6 +623,7 @@ interface HiDreamGenerateParams {
   keepAspect?: boolean;
   scheduler?: 'flow_match' | 'flash';
   onProgress?: (step: number, total: number) => void;
+  signal?: AbortSignal;
 }
 
 export function hiDreamGenerate({
@@ -605,9 +636,16 @@ export function hiDreamGenerate({
   keepAspect = false,
   scheduler = 'flow_match',
   onProgress,
+  signal,
 }: HiDreamGenerateParams): Promise<string> {
   return new Promise(async (resolve, reject) => {
     try {
+      // Check if signal is already aborted
+      if (signal?.aborted) {
+        reject(new Error('请求已取消'));
+        return;
+      }
+
       const refsB64: string[] = [];
       for (const file of images) {
         const b64 = await fileToBase64(file);
@@ -629,6 +667,7 @@ export function hiDreamGenerate({
           keep_original_aspect: keepAspect,
           editing_scheduler: scheduler,
         }),
+        signal,
       });
 
       if (!startResponse.ok) {
@@ -647,6 +686,16 @@ export function hiDreamGenerate({
       console.log('[HiDream] job_id:', jobId);
 
       const eventSource = new EventSource(`/api/generate/stream/${jobId}`);
+      
+      // Handle abort for EventSource
+      const handleAbort = () => {
+        eventSource.close();
+        reject(new Error('请求已取消'));
+      };
+      
+      if (signal) {
+        signal.addEventListener('abort', handleAbort);
+      }
 
       eventSource.onmessage = (event) => {
         try {
@@ -662,12 +711,18 @@ export function hiDreamGenerate({
           } else if (msg.type === 'done') {
             console.log('[HiDream] done, image received (base64)');
             eventSource.close();
+            if (signal) {
+              signal.removeEventListener('abort', handleAbort);
+            }
             const imageUrl = `data:image/png;base64,${msg.image}`;
             console.log('[HiDream] Resolving promise with imageUrl');
             resolve(imageUrl);
           } else if (msg.type === 'error') {
             console.error('[HiDream] error:', msg.message);
             eventSource.close();
+            if (signal) {
+              signal.removeEventListener('abort', handleAbort);
+            }
             const errorMsg = msg.message || '生成失败';
             reject(new Error(errorMsg));
           } else {
@@ -675,6 +730,10 @@ export function hiDreamGenerate({
           }
         } catch (parseErr) {
           console.error('[HiDream] SSE parse error:', parseErr, 'data:', event.data);
+          eventSource.close();
+          if (signal) {
+            signal.removeEventListener('abort', handleAbort);
+          }
           reject(parseErr);
         }
       };
@@ -682,6 +741,9 @@ export function hiDreamGenerate({
       eventSource.onerror = (err) => {
         console.error('[HiDream] SSE connection error:', err);
         eventSource.close();
+        if (signal) {
+          signal.removeEventListener('abort', handleAbort);
+        }
         const errorMsg = 'SSE 连接断开，请检查服务是否正常运行';
         reject(new Error(errorMsg));
       };
@@ -718,6 +780,7 @@ interface ErnieTextToImageParams {
   usePe?: boolean;
   onComplete: (imageUrl: string) => void;
   onError: (error: string) => void;
+  signal?: AbortSignal;
 }
 
 export async function ernieTextToImage({
@@ -729,6 +792,7 @@ export async function ernieTextToImage({
   usePe = true,
   onComplete,
   onError,
+  signal,
 }: ErnieTextToImageParams): Promise<void> {
   try {
     console.log('ERNIE-Image 调用参数:', {
@@ -754,6 +818,7 @@ export async function ernieTextToImage({
         guidance_scale: guidanceScale,
         use_pe: usePe,
       }),
+      signal,
     });
 
     console.log('ERNIE-Image 响应状态:', response.status);
@@ -829,6 +894,7 @@ interface QwenEditImageParams {
   seed?: number;
   onComplete: (imageUrls: string[]) => void;
   onError: (error: string) => void;
+  signal?: AbortSignal;
 }
 
 export async function qwenEditImage({
@@ -840,6 +906,7 @@ export async function qwenEditImage({
   seed = 0,
   onComplete,
   onError,
+  signal,
 }: QwenEditImageParams): Promise<void> {
   try {
     const formData = new FormData();
@@ -855,6 +922,7 @@ export async function qwenEditImage({
     const response = await fetch(`${QWEN_API_URL}/edit_image`, {
       method: 'POST',
       body: formData,
+      signal,
     });
 
     if (!response.ok) {

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Send, Loader2, Image as ImageIcon, X, Upload } from 'lucide-react';
+import { Send, Loader2, Image as ImageIcon, X, Upload, StopCircle } from 'lucide-react';
 import { useStore } from '../store';
 import { qwenEditImage } from '../services/api';
 import { saveHistory } from '../services/historyApi';
@@ -44,6 +44,8 @@ export default function QwenInputArea() {
   const addMessage = useStore((state) => state.addMessage);
   const setLoading = useStore((state) => state.setLoading);
   const setError = useStore((state) => state.setError);
+  const setAbortController = useStore((state) => state.setAbortController);
+  const cancelRequest = useStore((state) => state.cancelRequest);
 
   const handleFileSelect = useCallback((selectedFiles: FileList | null) => {
     if (!selectedFiles) return;
@@ -89,6 +91,9 @@ export default function QwenInputArea() {
     }
     if (isLoading) return;
 
+    const abortController = new AbortController();
+    setAbortController(abortController);
+
     const startTime = Date.now();
     const requestTime = new Date().toISOString();
     const requestImagesBase64 = await Promise.all(imageFiles.map(fileToBase64));
@@ -120,6 +125,7 @@ export default function QwenInputArea() {
       guidanceScale: config.qwenGuidanceScale,
       trueCfgScale: config.qwenTrueCfgScale,
       seed: config.qwenSeed,
+      signal: abortController.signal,
       onComplete: async (imageUrls) => {
         const duration = Date.now() - startTime;
         const responseTime = new Date().toISOString();
@@ -146,6 +152,7 @@ export default function QwenInputArea() {
         };
         addMessage(assistantMessage);
         setLoading(false);
+        setAbortController(null);
         saveHistory({
           model: currentModel,
           generate_type: 'edit-image',
@@ -161,8 +168,12 @@ export default function QwenInputArea() {
       onError: async (error) => {
         const duration = Date.now() - startTime;
         const responseTime = new Date().toISOString();
-        setError(error);
+        // 忽略 AbortError
+        if (error !== '请求已取消' && !(error instanceof Error && error.name === 'AbortError')) {
+          setError(error);
+        }
         setLoading(false);
+        setAbortController(null);
         saveHistory({
           model: currentModel,
           generate_type: 'edit-image',
@@ -258,18 +269,24 @@ export default function QwenInputArea() {
             />
           </div>
 
-          <button
-            onClick={handleSend}
-            disabled={isLoading || !input.trim() || imageFiles.length === 0}
-            className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-          >
-            {isLoading ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
+          {isLoading ? (
+            <button
+              onClick={cancelRequest}
+              className="px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-medium hover:opacity-90 transition-all flex items-center gap-2"
+            >
+              <StopCircle size={18} />
+              <span className="hidden sm:inline">停止</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || imageFiles.length === 0}
+              className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+            >
               <Send size={18} />
-            )}
-            <span className="hidden sm:inline">编辑</span>
-          </button>
+              <span className="hidden sm:inline">编辑</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

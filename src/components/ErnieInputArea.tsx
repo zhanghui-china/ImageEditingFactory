@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Send, Loader2, Brain } from 'lucide-react';
+import { Send, Loader2, Brain, StopCircle } from 'lucide-react';
 import { useStore } from '../store';
 import { ernieTextToImage } from '../services/api';
 import { saveHistory } from '../services/historyApi';
@@ -40,10 +40,15 @@ export default function ErnieInputArea() {
   const addMessage = useStore((state) => state.addMessage);
   const setLoading = useStore((state) => state.setLoading);
   const setError = useStore((state) => state.setError);
+  const setAbortController = useStore((state) => state.setAbortController);
+  const cancelRequest = useStore((state) => state.cancelRequest);
 
   const handleSend = async () => {
     if (!input.trim()) return;
     if (isLoading) return;
+
+    const abortController = new AbortController();
+    setAbortController(abortController);
 
     const startTime = Date.now();
     const requestTime = new Date().toISOString();
@@ -67,6 +72,7 @@ export default function ErnieInputArea() {
       numInferenceSteps: config.ernieSteps,
       guidanceScale: config.ernieGuidanceScale,
       usePe: config.ernieUsePe,
+      signal: abortController.signal,
       onComplete: async (imageUrl) => {
         const duration = Date.now() - startTime;
         const responseTime = new Date().toISOString();
@@ -93,6 +99,7 @@ export default function ErnieInputArea() {
         };
         addMessage(assistantMessage);
         setLoading(false);
+        setAbortController(null);
         saveHistory({
           model: currentModel,
           generate_type: 'text-to-image',
@@ -108,8 +115,12 @@ export default function ErnieInputArea() {
       onError: async (error) => {
         const duration = Date.now() - startTime;
         const responseTime = new Date().toISOString();
-        setError(error);
+        // 忽略 AbortError
+        if (error !== '请求已取消' && !(error instanceof Error && error.name === 'AbortError')) {
+          setError(error);
+        }
         setLoading(false);
+        setAbortController(null);
         saveHistory({
           model: currentModel,
           generate_type: 'text-to-image',
@@ -151,18 +162,24 @@ export default function ErnieInputArea() {
             />
           </div>
 
-          <button
-            onClick={handleSend}
-            disabled={isLoading || !input.trim()}
-            className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-amber-600 text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-          >
-            {isLoading ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
+          {isLoading ? (
+            <button
+              onClick={cancelRequest}
+              className="px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-medium hover:opacity-90 transition-all flex items-center gap-2"
+            >
+              <StopCircle size={18} />
+              <span className="hidden sm:inline">停止</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleSend}
+              disabled={!input.trim()}
+              className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-amber-600 text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+            >
               <Send size={18} />
-            )}
-            <span className="hidden sm:inline">生成</span>
-          </button>
+              <span className="hidden sm:inline">生成</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

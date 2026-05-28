@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Send, Loader2, X, Palette, Upload, Sparkles } from 'lucide-react';
+import { Send, Loader2, X, Palette, Upload, Sparkles, StopCircle } from 'lucide-react';
 import { useStore } from '../store';
 import { generateFluxKlein, editFluxKlein, uploadImages } from '../services/api';
 import { saveHistory } from '../services/historyApi';
@@ -46,6 +46,8 @@ export default function FluxInputArea() {
   const addMessage = useStore((state) => state.addMessage);
   const setLoading = useStore((state) => state.setLoading);
   const setError = useStore((state) => state.setError);
+  const setAbortController = useStore((state) => state.setAbortController);
+  const cancelRequest = useStore((state) => state.cancelRequest);
 
   const isTextToImage = fluxMode === 'text-to-image';
 
@@ -75,6 +77,9 @@ export default function FluxInputArea() {
     if (!isTextToImage && files.length === 0) return;
     if (isLoading) return;
 
+    const abortController = new AbortController();
+    setAbortController(abortController);
+
     const startTime = Date.now();
     const requestTime = new Date().toISOString();
     const userMessage = {
@@ -99,6 +104,7 @@ export default function FluxInputArea() {
         height: config.fluxHeight,
         steps: config.fluxSteps,
         guidanceScale: config.fluxGuidanceScale,
+        signal: abortController.signal,
         onComplete: async (imageUrl) => {
           const duration = Date.now() - startTime;
           const responseTime = new Date().toISOString();
@@ -125,6 +131,7 @@ export default function FluxInputArea() {
           };
           addMessage(assistantMessage);
           setLoading(false);
+          setAbortController(null);
           const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
           saveHistory({
             model: currentModel,
@@ -141,8 +148,12 @@ export default function FluxInputArea() {
         onError: async (error) => {
           const duration = Date.now() - startTime;
           const responseTime = new Date().toISOString();
-          setError(error);
+          // 忽略 AbortError
+          if (error !== '请求已取消' && !(error instanceof Error && error.name === 'AbortError')) {
+            setError(error);
+          }
           setLoading(false);
+          setAbortController(null);
           const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
           saveHistory({
             model: currentModel,
@@ -160,6 +171,7 @@ export default function FluxInputArea() {
     } else {
       uploadImages({
         files: currentFiles,
+        signal: abortController.signal,
         onComplete: async (uploadedImageUrls) => {
           editFluxKlein({
             prompt: currentInput,
@@ -169,6 +181,7 @@ export default function FluxInputArea() {
             steps: config.fluxSteps,
             guidanceScale: config.fluxGuidanceScale,
             strength: config.fluxStrength,
+            signal: abortController.signal,
             onComplete: async (imageUrl) => {
               const duration = Date.now() - startTime;
               const responseTime = new Date().toISOString();
@@ -195,6 +208,7 @@ export default function FluxInputArea() {
               };
               addMessage(assistantMessage);
               setLoading(false);
+              setAbortController(null);
               setFiles([]);
               setImagePreviews([]);
               const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
@@ -213,8 +227,12 @@ export default function FluxInputArea() {
             onError: async (error) => {
               const duration = Date.now() - startTime;
               const responseTime = new Date().toISOString();
-              setError(error);
+              // 忽略 AbortError
+              if (error !== '请求已取消' && !(error instanceof Error && error.name === 'AbortError')) {
+                setError(error);
+              }
               setLoading(false);
+              setAbortController(null);
               setFiles([]);
               setImagePreviews([]);
               const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
@@ -235,8 +253,12 @@ export default function FluxInputArea() {
         onError: async (error) => {
           const duration = Date.now() - startTime;
           const responseTime = new Date().toISOString();
-          setError(error);
+          // 忽略 AbortError
+          if (error !== '请求已取消' && !(error instanceof Error && error.name === 'AbortError')) {
+            setError(error);
+          }
           setLoading(false);
+          setAbortController(null);
           setFiles([]);
           setImagePreviews([]);
           const requestImagesBase64 = await Promise.all(currentFiles.map(fileToBase64));
@@ -377,22 +399,27 @@ export default function FluxInputArea() {
             />
           </div>
 
-          <button
-            onClick={handleSend}
-            disabled={
-              isLoading || 
-              !input.trim() || 
-              (!isTextToImage && files.length === 0)
-            }
-            className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-          >
-            {isLoading ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
+          {isLoading ? (
+            <button
+              onClick={cancelRequest}
+              className="px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-medium hover:opacity-90 transition-all flex items-center gap-2"
+            >
+              <StopCircle size={18} />
+              <span className="hidden sm:inline">停止</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleSend}
+              disabled={
+                !input.trim() || 
+                (!isTextToImage && files.length === 0)
+              }
+              className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+            >
               <Send size={18} />
-            )}
-            <span className="hidden sm:inline">生成</span>
-          </button>
+              <span className="hidden sm:inline">生成</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -17,6 +17,7 @@ interface AppState {
   config: ModelConfig;
   streamingContent: string;
   fluxMode: FluxMode;
+  abortController: AbortController | null;
   getApiKey: () => string;
   setApiKey: (key: string) => void;
   setCurrentModel: (model: ModelType) => void;
@@ -29,6 +30,8 @@ interface AppState {
   resetStreaming: () => void;
   getCurrentMessages: () => Message[];
   setFluxMode: (mode: FluxMode) => void;
+  setAbortController: (controller: AbortController | null) => void;
+  cancelRequest: () => void;
 }
 
 const defaultConfig: ModelConfig = {
@@ -75,8 +78,6 @@ const defaultConfig: ModelConfig = {
   qwenSeed: 0,
 };
 
-
-
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -88,14 +89,13 @@ export const useStore = create<AppState>()(
       config: defaultConfig,
       streamingContent: '',
       fluxMode: 'text-to-image',
+      abortController: null,
 
       getApiKey: () => {
-        // 优先从环境变量读取
         const envKey = import.meta.env.VITE_SENSENOVA_API_KEY;
         if (envKey) {
           return envKey;
         }
-        // 降级到 store 中的 key（保持向后兼容）
         return get().apiKey;
       },
 
@@ -167,6 +167,16 @@ export const useStore = create<AppState>()(
       getCurrentMessages: () => {
         const state = get();
         return state.messagesByModel[state.currentModel] || [];
+      },
+
+      setAbortController: (controller) => set({ abortController: controller }),
+
+      cancelRequest: () => {
+        const state = get();
+        if (state.abortController) {
+          state.abortController.abort();
+          set({ abortController: null, isLoading: false });
+        }
       },
     }),
     {

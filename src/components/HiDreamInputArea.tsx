@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Send, Image as ImageIcon, X, Loader2 } from 'lucide-react';
+import { Send, Image as ImageIcon, X, Loader2, StopCircle } from 'lucide-react';
 import { useStore } from '../store';
 import { hiDreamTextToImage, hiDreamEditImage, hiDreamSubjectDriven } from '../services/api';
 import { saveHistory } from '../services/historyApi';
@@ -31,7 +31,7 @@ const urlToBase64 = (url: string): Promise<string> => {
 };
 
 export default function HiDreamInputArea() {
-  const { config, updateConfig, isLoading, setLoading, addMessage } = useStore();
+  const { config, updateConfig, isLoading, setLoading, addMessage, setAbortController, cancelRequest } = useStore();
   const [input, setInput] = useState('');
   const [uploadedImages, setUploadedImages] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -62,6 +62,9 @@ export default function HiDreamInputArea() {
       return;
     }
 
+    const abortController = new AbortController();
+    setAbortController(abortController);
+
     const startTime = Date.now();
     const requestTime = new Date().toISOString();
     setLoading(true);
@@ -84,6 +87,7 @@ export default function HiDreamInputArea() {
           width: config.hidreamWidth,
           height: config.hidreamHeight,
           seed: config.hidreamSteps,
+          signal: abortController.signal,
         });
       } else if (config.hidreamMode === 'edit-image' && uploadedImages[0]) {
         imageUrl = await hiDreamEditImage({
@@ -93,6 +97,7 @@ export default function HiDreamInputArea() {
           height: config.hidreamHeight,
           keepAspect: config.hidreamKeepAspect,
           scheduler: config.hidreamScheduler,
+          signal: abortController.signal,
         });
       } else if (config.hidreamMode === 'subject-driven' && uploadedImages.length > 0) {
         imageUrl = await hiDreamSubjectDriven({
@@ -102,6 +107,7 @@ export default function HiDreamInputArea() {
           height: config.hidreamHeight,
           keepAspect: config.hidreamKeepAspect,
           scheduler: config.hidreamScheduler,
+          signal: abortController.signal,
         });
       } else {
         throw new Error('Invalid mode or no image');
@@ -138,6 +144,7 @@ export default function HiDreamInputArea() {
       
       console.log('[HiDreamInputArea] Setting loading to false');
       setLoading(false);
+      setAbortController(null);
       setInput('');
       setUploadedImages([]);
       setPreviewUrls([]);
@@ -171,14 +178,18 @@ export default function HiDreamInputArea() {
       const duration = Date.now() - startTime;
       const responseTime = new Date().toISOString();
       
-      addMessage({
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: `生成失败: ${error instanceof Error ? error.message : '未知错误'}`,
-        timestamp: Date.now(),
-        model: 'hidream-o1-image',
-      });
+      // 忽略 AbortError
+      if (error !== '请求已取消' && !(error instanceof Error && error.name === 'AbortError')) {
+        addMessage({
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: `生成失败: ${error instanceof Error ? error.message : '未知错误'}`,
+          timestamp: Date.now(),
+          model: 'hidream-o1-image',
+        });
+      }
       setLoading(false);
+      setAbortController(null);
       const savedInput = input;
       const savedImages = [...uploadedImages];
       setInput('');
@@ -296,22 +307,27 @@ export default function HiDreamInputArea() {
               style={{ minHeight: '48px', maxHeight: '120px' }}
             />
           </div>
-          <button
-            onClick={handleSubmit}
-            disabled={
-              isLoading ||
-              !input.trim() ||
-              (config.hidreamMode !== 'text-to-image' && uploadedImages.length === 0)
-            }
-            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-          >
-            {isLoading ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
+          {isLoading ? (
+            <button
+              onClick={cancelRequest}
+              className="px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-medium hover:opacity-90 transition-all flex items-center gap-2"
+            >
+              <StopCircle size={18} />
+              <span className="hidden sm:inline">停止</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              disabled={
+                !input.trim() ||
+                (config.hidreamMode !== 'text-to-image' && uploadedImages.length === 0)
+              }
+              className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+            >
               <Send size={18} />
-            )}
-            <span className="hidden sm:inline">{isLoading ? '生成中...' : '生成'}</span>
-          </button>
+              <span className="hidden sm:inline">生成</span>
+            </button>
+          )}
         </div>
       </div>
     </div>
