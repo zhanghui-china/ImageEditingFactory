@@ -69,6 +69,10 @@ const defaultConfig: ModelConfig = {
   ernieSteps: 50,
   ernieGuidanceScale: 4.0,
   ernieUsePe: true,
+  qwenSteps: 40,
+  qwenGuidanceScale: 1.0,
+  qwenTrueCfgScale: 4.0,
+  qwenSeed: 0,
 };
 
 // 清除旧的 localStorage 数据，防止超大图片占用配额

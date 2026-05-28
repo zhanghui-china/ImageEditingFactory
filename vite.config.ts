@@ -42,6 +42,16 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/ernie-images/, ''),
       },
+      '/qwen-api': {
+        target: 'http://192.168.199.107:5000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/qwen-api/, ''),
+      },
+      '/qwen-images': {
+        target: 'http://192.168.199.107:5000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/qwen-images/, ''),
+      },
       '/api/history': {
         target: 'http://localhost:8789',
         changeOrigin: true,

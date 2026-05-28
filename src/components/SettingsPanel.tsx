@@ -28,6 +28,7 @@ export default function SettingsPanel() {
   const isJoyAI = currentModel === 'joyai-image-edit';
   const isHiDream = currentModel === 'hidream-o1-image';
   const isErnieImage = currentModel === 'ernie-image';
+  const isQwenImageEdit = currentModel === 'qwen-image-edit-2511';
   const isFluxImageToImage = isFluxKlein && fluxMode === 'image-to-image';
 
   return (
@@ -756,6 +757,78 @@ export default function SettingsPanel() {
                   }`}
                 />
               </button>
+            </div>
+          </>
+        )}
+
+        {isQwenImageEdit && (
+          <>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-orange-400" />
+                <label className="text-xs text-text-secondary">推理步数</label>
+                <span className="text-xs text-text-muted ml-auto">{config.qwenSteps}</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="100"
+                step="1"
+                value={config.qwenSteps}
+                onChange={(e) => updateConfig({ qwenSteps: parseInt(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-orange-400"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-orange-400" />
+                <label className="text-xs text-text-secondary">引导强度</label>
+                <span className="text-xs text-text-muted ml-auto">{config.qwenGuidanceScale.toFixed(1)}</span>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="10.0"
+                step="0.5"
+                value={config.qwenGuidanceScale}
+                onChange={(e) => updateConfig({ qwenGuidanceScale: parseFloat(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-orange-400"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-orange-400" />
+                <label className="text-xs text-text-secondary">True CFG Scale</label>
+                <span className="text-xs text-text-muted ml-auto">{config.qwenTrueCfgScale.toFixed(1)}</span>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="20.0"
+                step="0.5"
+                value={config.qwenTrueCfgScale}
+                onChange={(e) => updateConfig({ qwenTrueCfgScale: parseFloat(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-orange-400"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-orange-400" />
+                <label className="text-xs text-text-secondary">随机种子</label>
+                <span className="text-xs text-text-muted ml-auto">{config.qwenSeed}</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="9999"
+                step="1"
+                value={config.qwenSeed}
+                onChange={(e) => updateConfig({ qwenSeed: parseInt(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-orange-400"
+              />
             </div>
           </>
         )}

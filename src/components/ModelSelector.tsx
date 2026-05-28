@@ -1,4 +1,4 @@
-import { Bot, Sparkles, Zap, Palette, Wand2, Layers, Brain } from 'lucide-react';
+import { Bot, Sparkles, Zap, Palette, Wand2, Layers, Brain, ImagePlus } from 'lucide-react';
 import { ModelType } from '../types';
 import { useStore } from '../store';
 
@@ -68,6 +68,14 @@ const models: ModelInfo[] = [
     description: '百度文心文生图模型',
     features: ['文生图', '高分辨率', 'PE 增强'],
   },
+  {
+    id: 'qwen-image-edit-2511',
+    name: 'Qwen-Image-Edit-2511',
+    icon: ImagePlus,
+    color: 'text-orange-400',
+    description: '通义千问图像编辑模型',
+    features: ['图像编辑', '文生图', '高质量输出'],
+  },
 ];
 
 export default function ModelSelector() {
@@ -104,6 +112,8 @@ export default function ModelSelector() {
                         ? '#22d3ee'
                         : model.color === 'text-yellow-400'
                         ? '#facc15'
+                        : model.color === 'text-orange-400'
+                        ? '#fb923c'
                         : '#f59e0b'
                       : 'transparent',
                   }}

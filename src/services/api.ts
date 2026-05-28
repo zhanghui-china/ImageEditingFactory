@@ -7,6 +7,10 @@ const JOYAI_API_URL = import.meta.env.VITE_JOYAI_API_URL || 'http://192.168.199.
 const ERNIE_API_URL = '/ernie-api';
 // 用于生产环境的完整 URL
 const ERNIE_API_URL_FULL = import.meta.env.VITE_ERNIE_API_URL || 'http://192.168.199.107:30000';
+// Qwen-Image-Edit API (开发环境使用代理
+const QWEN_API_URL = '/qwen-api';
+// 用于生产环境的完整 URL
+const QWEN_API_URL_FULL = import.meta.env.VITE_QWEN_API_URL || 'http://192.168.199.107:5000';
 
 interface SendMessageParams {
   apiKey: string;
@@ -808,6 +812,75 @@ export async function ernieTextToImage({
     onComplete(imageUrl);
   } catch (error) {
     console.error('ERNIE-Image 请求异常:', error);
+    onError(error instanceof Error ? error.message : '未知错误');
+  }
+}
+
+// ====================================
+// Qwen-Image-Edit-2511 服务
+// ====================================
+
+interface QwenEditImageParams {
+  prompt: string;
+  images: File[];
+  numInferenceSteps?: number;
+  guidanceScale?: number;
+  trueCfgScale?: number;
+  seed?: number;
+  onComplete: (imageUrls: string[]) => void;
+  onError: (error: string) => void;
+}
+
+export async function qwenEditImage({
+  prompt,
+  images,
+  numInferenceSteps = 40,
+  guidanceScale = 1.0,
+  trueCfgScale = 4.0,
+  seed = 0,
+  onComplete,
+  onError,
+}: QwenEditImageParams): Promise<void> {
+  try {
+    const formData = new FormData();
+    images.forEach((image) => {
+      formData.append('files', image);
+    });
+    formData.append('prompt', prompt);
+    formData.append('num_inference_steps', numInferenceSteps.toString());
+    formData.append('guidance_scale', guidanceScale.toString());
+    formData.append('true_cfg_scale', trueCfgScale.toString());
+    formData.append('seed', seed.toString());
+
+    const response = await fetch(`${QWEN_API_URL}/edit_image`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `请求失败: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // 支持新旧两种响应格式
+    let imageUrls: string[];
+    if (data.output_urls && Array.isArray(data.output_urls)) {
+      // 新格式：多个图片
+      imageUrls = data.output_urls.map((url: string) => 
+        url.startsWith('/') ? `/qwen-images${url}` : url
+      );
+    } else if (data.output_url) {
+      // 旧格式：单个图片
+      imageUrls = [data.output_url.startsWith('/') ? `/qwen-images${data.output_url}` : data.output_url];
+    } else {
+      throw new Error('Invalid response format');
+    }
+    
+    onComplete(imageUrls);
+  } catch (error) {
+    console.error('Qwen-Image-Edit 请求异常:', error);
     onError(error instanceof Error ? error.message : '未知错误');
   }
 }

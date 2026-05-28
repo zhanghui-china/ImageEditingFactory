@@ -5,7 +5,8 @@ export type ModelType =
   | 'flux-klein' 
   | 'joyai-image-edit'
   | 'hidream-o1-image'
-  | 'ernie-image';
+  | 'ernie-image'
+  | 'qwen-image-edit-2511';
 
 export interface Message {
   id: string;
@@ -61,6 +62,10 @@ export interface ModelConfig {
   ernieSteps: number;
   ernieGuidanceScale: number;
   ernieUsePe: boolean;
+  qwenSteps: number;
+  qwenGuidanceScale: number;
+  qwenTrueCfgScale: number;
+  qwenSeed: number;
 }
 
 export interface ContentBlock {

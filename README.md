@@ -15,6 +15,7 @@
 | **JoyAI Image Edit** | 图像编辑 + 理解 + 空间变换 | 强大的图像编辑和理解模型，支持多种操作 |
 | **HiDream-O1-Image** | 文生图 + 编辑 + 主体驱动 | Pixel-level 统一多模态模型 |
 | **ERNIE-Image** | 文生图 | 百度文心文生图模型，支持 PE 增强 |
+| **Qwen-Image-Edit-2511** | 图像编辑 | 通义千问图像编辑模型，支持高质量图像编辑和多图片批量处理 |
 
 ### 核心功能
 
@@ -27,6 +28,7 @@
 - ⏱️ **时间统计** - 显示每次交互的耗时
 - 🔍 **可折叠参数面板** - 灵活的参数配置界面
 - 💾 **图片持久化保存** - 所有生成的图片都会转换为 base64 格式保存到历史记录，确保刷新页面后仍能正常查看
+- 📸 **多图片批量编辑** - Qwen-Image-Edit-2511 支持一次性上传和编辑多张图片
 
 ## 技术栈
 
@@ -53,6 +55,7 @@
 │   │   ├── ChatInterface.tsx        # 聊天界面
 │   │   ├── InputArea.tsx            # 输入区域 (其他模型)
 │   │   ├── ErnieInputArea.tsx       # 输入区域 (ERNIE-Image)
+│   │   ├── QwenInputArea.tsx        # 输入区域 (Qwen-Image-Edit)
 │   │   ├── FluxInputArea.tsx        # 输入区域 (FLUX)
 │   │   ├── JoyAIInputArea.tsx       # 输入区域 (JoyAI)
 │   │   ├── HiDreamInputArea.tsx     # 输入区域 (HiDream)
@@ -80,6 +83,8 @@
 │   └── server_JoyAI-Image-Edit.py
 ├── HiDream-O1-Image/    # HiDream 后端服务
 │   └── server_HiDream-01-Image.sh
+├── Qwen-Image-Edit-2511/ # Qwen-Image-Edit 后端服务
+│   └── test_Qwen-Image-Edit-2511_service.py
 ├── server_history.py    # 历史记录服务
 ├── history_service.py   # 历史记录数据库服务
 ├── public/
@@ -211,6 +216,22 @@ sglang serve --model-path /home1/zhanghui/models/PaddlePaddle/ERNIE-Image --host
 
 部署 ERNIE-Image：https://zhuanlan.zhihu.com/p/2033537436198904369
 
+#### Qwen-Image-Edit-2511 后端
+
+```bash
+conda activate qwenimage
+
+# 安装依赖
+pip install flask torch diffusers pillow
+
+# 启动 Qwen 服务
+cd ~/Qwen-Image-Edit-2511
+python test_Qwen-Image-Edit-2511_service.py
+```
+
+服务会在 `http://0.0.0.0:5000` 启动。
+
+部署 Qwen-Image-Edit-2511：https://zhuanlan.zhihu.com/p/2022011775193718931
 
 
 ## 使用说明
@@ -307,6 +328,46 @@ ERNIE-Image 是百度文心一格的文生图模型，需要后端服务支持�
 
 **注意：** ERNIE-Image 后端返回的是 OpenAI 格式的 JSON 响应，前端会自动解析并显示图片。生成的图片会以 base64 格式保存到历史记录中，确保刷新页面后仍能正常查看。
 
+### Qwen-Image-Edit-2511
+
+Qwen-Image-Edit-2511 是通义千问的图像编辑模型，支持高质量的图像编辑和多图片批量处理功能。
+
+**部署步骤：**
+
+1. 在 GPU 服务器上启动 Qwen-Image-Edit-2511 后端服务：
+
+```bash
+# 确保服务运行在 http://192.168.199.107:5000
+# 服务会自动处理 CORS 跨域问题（通过 Vite 代理）
+```
+
+2. 在前端 `.env` 文件中配置服务器地址（如需要）
+
+3. 使用说明：
+   - 选择 **Qwen-Image-Edit-2511** 模型
+   - 点击大上传区域或拖拽图片到上传框（**支持一次性选择或拖拽多张图片**）
+   - 上传的图片会在顶部显示预览，支持水平滚动查看
+   - 每张图片旁边都有删除按钮，可以单独移除
+   - 可以继续追加更多图片，系统会保持已上传的图片
+   - 输入描述你想要如何编辑这些图片的提示词（提示词会应用到所有图片）
+   - 可以在左侧设置面板调整参数：
+     - 推理步数
+     - 引导强度
+     - True CFG Scale
+     - 随机种子
+   - 点击发送编辑图片
+
+**多图片编辑功能：**
+- 支持批量处理多张图片，使用相同的提示词和参数
+- 系统会依次处理每张图片，最终返回所有编辑后的图片
+- 支持拖拽上传和文件选择器两种方式添加图片
+- 友好的拖拽反馈效果，提升用户体验
+
+**注意：** 
+- Qwen-Image-Edit-2511 后端会返回所有图像编辑后的图片，前端会自动显示并保存到历史记录中
+- 生成的图片会以 base64 格式保存，确保刷新页面后仍能正常查看
+- 后端同时兼容单文件和多文件上传格式，保持向后兼容
+
 ### 历史查询
 
 1. 点击右上角的 "历史查询" 按钮
@@ -324,9 +385,11 @@ ERNIE-Image 是百度文心一格的文生图模型，需要后端服务支持�
 4. 点击图片可以在新标签页中打开
 5. 可以删除不需要的历史记录
 
-## API 接口 (FLUX 后端)
+## API 接口
 
-### 生成图片
+### FLUX 后端
+
+#### 生成图片
 
 ```http
 POST /generate
@@ -342,7 +405,7 @@ Content-Type: application/json
 }
 ```
 
-### 编辑图片
+#### 编辑图片
 
 ```http
 POST /edit
@@ -357,14 +420,44 @@ Content-Type: application/json
 }
 ```
 
-### 上传图片
+### FLUX FLUX FLUX
+
+### Qwen-Image-Edit-2511 后端
+
+#### 编辑图片
 
 ```http
-POST /upload-images
+POST /edit_image
 Content-Type: multipart/form-data
+
+Parameters:
+  files: multiple image files (支持多图片上传)
+  file: single image file (向后兼容，支持单图片上传)
+  prompt: text prompt
+  num_inference_steps: optional, default 40
+  guidance_scale: optional, default 1.0
+  true_cfg_scale: optional, default 4.0
+  seed: optional, default 0
+
+Example curl (多图片上传):
+curl -X POST http://192.168.199.107:5000/edit_image \
+  -F "files=@image1.png" \
+  -F "files=@image2.png" \
+  -F "prompt=generate a christmas theme"
+
+Example curl (单图片上传，向后兼容):
+curl -X POST http://192.168.199.107:5000/edit_image \
+  -F "file=@image.png" \
+  -F "prompt=generate a christmas theme"
 ```
 
-### 健康检查
+#### 获取生成的图片
+
+```http
+GET /outputs/{filename}
+```
+
+#### 健康检查
 
 ```http
 GET /health

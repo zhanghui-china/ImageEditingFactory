@@ -7,6 +7,7 @@ import FluxInputArea from './components/FluxInputArea';
 import JoyAIInputArea from './components/JoyAIInputArea';
 import HiDreamInputArea from './components/HiDreamInputArea';
 import ErnieInputArea from './components/ErnieInputArea';
+import QwenInputArea from './components/QwenInputArea';
 import SettingsPanel from './components/SettingsPanel';
 import ImagePreviewModal from './components/ImagePreviewModal';
 import HistoryPanel from './components/HistoryPanel';
@@ -28,6 +29,7 @@ function App() {
   const isJoyAI = currentModel === 'joyai-image-edit';
   const isHiDream = currentModel === 'hidream-o1-image';
   const isErnieImage = currentModel === 'ernie-image';
+  const isQwenImageEdit = currentModel === 'qwen-image-edit-2511';
   const apiKey = getApiKey();
 
   useEffect(() => {
@@ -129,6 +131,7 @@ function App() {
             {currentModel === 'sensenova-u1-fast' && 'SenseNova U1 Fast'}
             {currentModel === 'deepseek-v4-flash' && 'DeepSeek V4 Flash'}
             {currentModel === 'ernie-image' && 'ERNIE-Image'}
+            {currentModel === 'qwen-image-edit-2511' && 'Qwen-Image-Edit-2511'}
           </div>
                 <button
                   onClick={() => setShowHistory(true)}
@@ -171,6 +174,8 @@ function App() {
                 <HiDreamInputArea />
               ) : isErnieImage ? (
                 <ErnieInputArea />
+              ) : isQwenImageEdit ? (
+                <QwenInputArea />
               ) : (
                 <InputArea />
               )}
