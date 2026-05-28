@@ -111,25 +111,8 @@ export default function HiDreamInputArea() {
       const duration = Date.now() - startTime;
       const responseTime = new Date().toISOString();
       
-      addMessage({
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: '',
-        images: [imageUrl!],
-        timestamp: Date.now(),
-        model: 'hidream-o1-image',
-        duration: duration,
-      });
-      
-      console.log('[HiDreamInputArea] Setting loading to false');
-      setLoading(false);
       const savedInput = input;
       const savedImages = [...uploadedImages];
-      setInput('');
-      setUploadedImages([]);
-      setPreviewUrls([]);
-      console.log('[HiDreamInputArea] Done');
-
       const requestImagesBase64 = await Promise.all(savedImages.map(fileToBase64));
       
       // 转换为base64保存
@@ -142,6 +125,23 @@ export default function HiDreamInputArea() {
       } catch (convertError) {
         console.error('Failed to convert URL to base64:', convertError);
       }
+      
+      addMessage({
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: '',
+        images: [savedImageUrl!],
+        timestamp: Date.now(),
+        model: 'hidream-o1-image',
+        duration: duration,
+      });
+      
+      console.log('[HiDreamInputArea] Setting loading to false');
+      setLoading(false);
+      setInput('');
+      setUploadedImages([]);
+      setPreviewUrls([]);
+      console.log('[HiDreamInputArea] Done');
 
       console.log('[HiDream] Saving history...', {
         model: 'hidream-o1-image',

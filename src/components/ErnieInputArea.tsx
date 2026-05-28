@@ -86,7 +86,7 @@ export default function ErnieInputArea() {
           id: (Date.now() + 1).toString(),
           role: 'assistant' as const,
           content: '',
-          images: [imageUrl],
+          images: [savedImageUrl],
           timestamp: Date.now(),
           model: currentModel,
           duration: duration,

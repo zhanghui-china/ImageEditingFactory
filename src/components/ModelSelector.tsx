@@ -18,7 +18,7 @@ const models: ModelInfo[] = [
     icon: Bot,
     color: 'text-sensenova-blue',
     description: '轻量多模态智能体模型',
-    features: ['文本对话', '图像理解', '256K 上下文'],
+    features: ['商汤在线推理', '文本对话', '图像理解', '256K 上下文'],
   },
   {
     id: 'deepseek-v4-flash',
@@ -26,7 +26,7 @@ const models: ModelInfo[] = [
     icon: Sparkles,
     color: 'text-deepseek-purple',
     description: '高性能深度思考模型',
-    features: ['思考模式', '工具调用', 'JSON 输出'],
+    features: ['商汤在线推理', '思考模式', '工具调用', 'JSON 输出'],
   },
   {
     id: 'sensenova-u1-fast',
@@ -34,7 +34,7 @@ const models: ModelInfo[] = [
     icon: Zap,
     color: 'text-u1-orange',
     description: '信息图生成加速版',
-    features: ['专业信息图', '多尺寸支持', '高质量输出'],
+    features: ['商汤在线推理', '专业信息图', '多尺寸支持', '高质量输出'],
   },
   {
     id: 'flux-klein',

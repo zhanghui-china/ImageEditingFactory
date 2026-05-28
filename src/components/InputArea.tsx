@@ -114,7 +114,7 @@ export default function InputArea() {
             id: (Date.now() + 1).toString(),
             role: 'assistant' as const,
             content: '',
-            images: generatedImages,
+            images: savedImages,
             timestamp: Date.now(),
             model: currentModel,
             duration: duration,

@@ -139,7 +139,7 @@ export default function QwenInputArea() {
           id: (Date.now() + 1).toString(),
           role: 'assistant' as const,
           content: '',
-          images: imageUrls,
+          images: savedImageUrls,
           timestamp: Date.now(),
           model: currentModel,
           duration: duration,
