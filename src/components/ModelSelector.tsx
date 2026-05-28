@@ -50,7 +50,7 @@ const models: ModelInfo[] = [
     icon: Wand2,
     color: 'text-pink-400',
     description: '图像理解与空间变换模型',
-    features: ['图像理解', '文生图', '图像编辑', '空间变换'],
+    features: ['本地 GPU 推理', '图像理解', '文生图', '图像编辑', '空间变换'],
   },
   {
     id: 'hidream-o1-image',
@@ -58,7 +58,7 @@ const models: ModelInfo[] = [
     icon: Layers,
     color: 'text-cyan-400',
     description: 'Pixel-level 统一多模态模型',
-    features: ['文生图 2048', '图像编辑', '主体驱动', '长文本渲染'],
+    features: ['本地 GPU 推理', '文生图 2048', '图像编辑', '主体驱动', '长文本渲染'],
   },
   {
     id: 'ernie-image',
@@ -66,7 +66,7 @@ const models: ModelInfo[] = [
     icon: Brain,
     color: 'text-yellow-400',
     description: '百度文心文生图模型',
-    features: ['文生图', '高分辨率', 'PE 增强'],
+    features: ['本地 GPU 推理', '文生图', '高分辨率', 'PE 增强'],
   },
   {
     id: 'qwen-image-edit-2511',
@@ -74,7 +74,7 @@ const models: ModelInfo[] = [
     icon: ImagePlus,
     color: 'text-orange-400',
     description: '通义千问图像编辑模型',
-    features: ['图像编辑', '文生图', '高质量输出'],
+    features: ['本地 GPU 推理', '图像编辑', '文生图', '高质量输出'],
   },
 ];
 
