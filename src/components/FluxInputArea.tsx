@@ -104,14 +104,15 @@ export default function FluxInputArea() {
           const responseTime = new Date().toISOString();
           
           // 转换为base64保存
-          let savedImageUrl = imageUrl;
-          try {
-            if (imageUrl.startsWith('blob:') || imageUrl.startsWith('/flux-api')) {
-              savedImageUrl = await urlToBase64(imageUrl);
-            }
-          } catch (convertError) {
-            console.error('Failed to convert URL to base64:', convertError);
-          }
+              let savedImageUrl = imageUrl;
+              try {
+                // 只要不是 data URL 格式，都尝试转换为 base64
+                if (!imageUrl.startsWith('data:')) {
+                  savedImageUrl = await urlToBase64(imageUrl);
+                }
+              } catch (convertError) {
+                console.error('Failed to convert URL to base64:', convertError);
+              }
 
           const assistantMessage = {
             id: (Date.now() + 1).toString(),
@@ -171,6 +172,18 @@ export default function FluxInputArea() {
             onComplete: async (imageUrl) => {
               const duration = Date.now() - startTime;
               const responseTime = new Date().toISOString();
+              
+              // 转换为base64保存
+              let savedImageUrl = imageUrl;
+              try {
+                // 只要不是 data URL 格式，都尝试转换为 base64
+                if (!imageUrl.startsWith('data:')) {
+                  savedImageUrl = await urlToBase64(imageUrl);
+                }
+              } catch (convertError) {
+                console.error('Failed to convert URL to base64:', convertError);
+              }
+              
               const assistantMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant' as const,
@@ -191,7 +204,7 @@ export default function FluxInputArea() {
                 prompt: currentInput,
                 request_images: requestImagesBase64,
                 response_result: 'success',
-                response_images: [imageUrl],
+                response_images: [savedImageUrl],
                 request_time: requestTime,
                 response_time: responseTime,
                 duration_ms: duration,

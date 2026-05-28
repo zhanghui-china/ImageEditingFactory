@@ -127,7 +127,8 @@ export default function QwenInputArea() {
         // 转换为base64保存
         const savedImageUrls = await Promise.all(
           imageUrls.map(async (url) => {
-            if (url.startsWith('blob:') || url.startsWith('/qwen-images')) {
+            // 只要不是 data URL 格式，都尝试转换为 base64
+            if (!url.startsWith('data:')) {
               return await urlToBase64(url);
             }
             return url;

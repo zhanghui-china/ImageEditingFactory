@@ -74,7 +74,8 @@ export default function ErnieInputArea() {
         // 转换为base64保存
         let savedImageUrl = imageUrl;
         try {
-          if (imageUrl.startsWith('blob:') || imageUrl.startsWith('/ernie-images')) {
+          // 只要不是 data URL 格式，都尝试转换为 base64
+          if (!imageUrl.startsWith('data:')) {
             savedImageUrl = await urlToBase64(imageUrl);
           }
         } catch (convertError) {
