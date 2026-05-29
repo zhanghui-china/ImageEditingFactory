@@ -34,7 +34,7 @@ export default function InputArea() {
 
   const getApiKey = useStore((state) => state.getApiKey);
   const currentModel = useStore((state) => state.currentModel);
-  const messages = useStore((state) => state.getCurrentMessages);
+  const getCurrentMessages = useStore((state) => state.getCurrentMessages);
   const config = useStore((state) => state.config);
   const isLoading = useStore((state) => state.isLoading);
   const addMessage = useStore((state) => state.addMessage);
@@ -177,6 +177,7 @@ export default function InputArea() {
       setInput('');
       setImages([]);
 
+      const messages = getCurrentMessages();
       const newMessages = [...messages, userMessage];
 
       const assistantMessageId = (Date.now() + 1).toString();

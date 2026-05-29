@@ -79,6 +79,12 @@ const defaultConfig: ModelConfig = {
   fireredSteps: 50,
   fireredGuidanceScale: 1.0,
   fireredSeed: 42,
+  sensenovaU1Steps: 50,
+  sensenovaU1GuidanceScale: 1.0,
+  sensenovaU1Seed: 42,
+  sensenovaU1Mode: 'text-to-image',
+  sensenovaU1Width: 1024,
+  sensenovaU1Height: 1024,
 };
 
 // 清理 localStorage 中的旧数据，避免空间溢出

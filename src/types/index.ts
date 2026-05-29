@@ -7,7 +7,8 @@ export type ModelType =
   | 'hidream-o1-image' 
   | 'ernie-image' 
   | 'qwen-image-edit-2511'
-  | 'firered-image-edit';
+  | 'firered-image-edit'
+  | 'sensenova-u1-8b-mot';
 
 export interface Message {
   id: string;
@@ -70,6 +71,12 @@ export interface ModelConfig {
   fireredSteps: number;
   fireredGuidanceScale: number;
   fireredSeed: number;
+  sensenovaU1Steps: number;
+  sensenovaU1GuidanceScale: number;
+  sensenovaU1Seed: number;
+  sensenovaU1Mode: 'text-to-image' | 'edit-image';
+  sensenovaU1Width: number;
+  sensenovaU1Height: number;
 }
 
 export interface ContentBlock {

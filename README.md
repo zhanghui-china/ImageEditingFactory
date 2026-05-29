@@ -16,7 +16,8 @@
 | **HiDream-O1-Image** | 文生图 + 编辑 + 主体驱动 | Pixel-level 统一多模态模型 |
 | **ERNIE-Image** | 文生图 | 百度文心文生图模型，支持 PE 增强 |
 | **Qwen-Image-Edit-2511** | 图像编辑 | 通义千问图像编辑模型，支持高质量图像编辑和多图片批量处理 |
-| **FireRed-Image-Edit** | 图像编辑 | FireRed 图像编辑模型，使用 vLLM-Omni 部署，支持高质量图像编辑 |
+| **FireRed-Image-Edit** | 图像编辑 | FireRed 图像编辑模型，使用 vllm-omni 部署，支持高质量图像编辑 |
+| **SenseNova-U1-8B-MoT** | 文生图/图像编辑 | SenseNova U1 模型，使用 vllm-omni 部署，支持文生图和图像编辑 |
 
 ### 核心功能
 
@@ -121,8 +122,26 @@ cp .env.example .env
 # Sensenova API Key (必需)
 VITE_SENSENOVA_API_KEY=sk-your-api-key-here
 
-# FLUX API Server URL (默认配置)
+# FLUX API Server URL
 VITE_FLUX_API_URL=http://[DGX Spark IP]:8787
+
+# Ernie API Server URL
+VITE_ERNIE_API_URL=http://[DGX Spark IP]:30000
+
+# JoyAI API Server URL
+VITE_JOYAI_API_URL=http://[DGX Spark IP]:8788
+
+# HiDream API Server URL
+VITE_HIDREAM_API_URL=http://[DGX Spark IP]:7860
+
+# Qwen-Image-Edit-2511 API Server URL (仅用于生产环境，开发环境使用 Vite 代理)
+VITE_QWEN_API_URL=http://[DGX Spark IP]:5000
+
+# FireRed-Image-Edit API Server URL (仅用于生产环境，开发环境使用 Vite 代理)
+VITE_FIRERED_API_URL=http://[DGX Spark IP]:8091
+
+# SenseNova-U1-8B-MoT API Server URL (仅用于生产环境，开发环境使用 Vite 代理)
+VITE_SENSENOVA_U1_API_URL=http://[DGX Spark IP]:8092
 ```
 
 ### 2. 前端启动
@@ -234,6 +253,47 @@ python test_Qwen-Image-Edit-2511_service.py
 服务会在 `http://0.0.0.0:5000` 启动。
 
 部署 Qwen-Image-Edit-2511：https://zhuanlan.zhihu.com/p/2022011775193718931
+
+#### FireRed-Image-Edit-1.1 后端
+
+```bash
+conda activate vllmomni311
+
+# 启动 FireRed-Image-Edit-1.1 服务
+vllm serve /home1/zhanghui/models/FireRedTeam/FireRed-Image-Edit-1___1  \
+  --omni \
+  --port 8091 \
+  --trust-remote-code \
+  --gpu-memory-utilization 0.9 \
+  --max-model-len 4096 \
+  --max-num-seqs 128 \
+  --dtype bfloat16
+```
+
+服务会在 `http://0.0.0.0:8091` 启动。
+
+部署 FireRed-Image-Edit-1.1：https://zhuanlan.zhihu.com/p/2043447509859693194
+
+#### SenseNova-U1-8B-MoT 后端
+
+```bash
+conda activate vllmomni
+
+# 启动 FireRed-Image-Edit-1.1 服务
+vllm serve /home1/zhanghui/models/SenseNova/SenseNova-U1-8B-MoT   \
+  --omni \
+  --port 8092 \
+  --trust-remote-code \
+  --gpu-memory-utilization 0.9 \
+  --max-model-len 4096 \
+  --max-num-seqs 128 \
+  --dtype bfloat16
+```
+
+服务会在 `http://0.0.0.0:8092` 启动。
+
+部署 SenseNova-U1-8B-MoT：https://zhuanlan.zhihu.com/p/2043447509859693194
+
 
 
 ## 使用说明
@@ -411,6 +471,49 @@ FireRed-Image-Edit 使用 OpenAI 兼容的聊天完成 API 格式，支持多模
 - 生成的图片会直接以 base64 格式返回
 - 前端通过 Vite 代理解决 CORS 跨域问题
 
+
+
+### SenseNova-U1-8B-MoT
+
+**文生图模式：**
+
+   - 选择 **SenseNova-U1-8B-MoT** 模型
+   - 切换到"文生图"模式
+   - 输入描述你想要生成的图片的提示词
+   - 可以在左侧设置面板调整参数：
+     - 图片宽度
+     - 图片高度
+     - 推理步数
+     - 引导强度
+     - 随机种子
+   - 点击"生成"按钮开始生成
+   - 生成过程中可以点击"停止"按钮随时中断
+
+**图像编辑模式：**
+
+   - 选择 **SenseNova-U1-8B-MoT** 模型
+   - 切换到"图像编辑"模式
+   - 点击上传区域或拖拽图片到上传框（支持多张图片）
+   - 上传的图片会在顶部显示预览，支持水平滚动查看
+   - 每张图片旁边都有删除按钮，可以单独移除
+   - 输入描述你想要如何编辑这些图片的提示词
+   - 可以在左侧设置面板调整参数：
+     - 推理步数
+     - 引导强度
+     - 随机种子
+   - 点击"编辑"按钮开始生成
+   - 生成过程中可以点击"停止"按钮随时中断
+
+**API 格式：**
+SenseNova-U1-8B-MoT 使用 OpenAI 兼容的聊天完成 API 格式，支持多模态输入（图片+文本）。
+
+**注意事项：**
+
+- 图片在前，文本在后的输入顺序
+- 后端返回 OpenAI 兼容格式的响应
+- 生成的图片会直接以 base64 格式返回
+- 前端通过 Vite 代理解决 CORS 跨域问题
+
 ### 历史查询
 
 1. 点击右上角的 "历史查询" 按钮
@@ -463,7 +566,7 @@ Content-Type: application/json
 }
 ```
 
-### FLUX FLUX FLUX
+### 
 
 ### Qwen-Image-Edit-2511 后端
 

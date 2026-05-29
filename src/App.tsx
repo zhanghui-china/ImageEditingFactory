@@ -9,10 +9,11 @@ import HiDreamInputArea from './components/HiDreamInputArea';
 import ErnieInputArea from './components/ErnieInputArea';
 import QwenInputArea from './components/QwenInputArea';
 import FireRedInputArea from './components/FireRedInputArea';
+import SenseNovaU1InputArea from './components/SenseNovaU1InputArea';
 import SettingsPanel from './components/SettingsPanel';
 import ImagePreviewModal from './components/ImagePreviewModal';
 import HistoryPanel from './components/HistoryPanel';
-import { AlertCircle, Clock, History } from 'lucide-react';
+import { AlertCircle, History } from 'lucide-react';
 
 function App() {
   const getApiKey = useStore((state) => state.getApiKey);
@@ -32,6 +33,7 @@ function App() {
   const isErnieImage = currentModel === 'ernie-image';
   const isQwenImageEdit = currentModel === 'qwen-image-edit-2511';
   const isFireRedImageEdit = currentModel === 'firered-image-edit';
+  const isSenseNovaU1 = currentModel === 'sensenova-u1-8b-mot';
   const apiKey = getApiKey();
 
   useEffect(() => {
@@ -129,12 +131,12 @@ function App() {
             {currentModel === 'joyai-image-edit' && 'JoyAI 图像编辑'}
             {currentModel === 'hidream-o1-image' && 'HiDream-O1-Image'}
             {currentModel === 'sensenova-6.7-flash-lite' && 'SenseNova 6.7 Flash-Lite'}
-            {currentModel === 'sensenova-vlist5' && 'SenseNova V5'}
             {currentModel === 'sensenova-u1-fast' && 'SenseNova U1 Fast'}
             {currentModel === 'deepseek-v4-flash' && 'DeepSeek V4 Flash'}
             {currentModel === 'ernie-image' && 'ERNIE-Image'}
             {currentModel === 'qwen-image-edit-2511' && 'Qwen-Image-Edit-2511'}
             {currentModel === 'firered-image-edit' && 'FireRed-Image-Edit'}
+            {currentModel === 'sensenova-u1-8b-mot' && 'SenseNova-U1-8B-MoT'}
           </div>
                 <button
                   onClick={() => setShowHistory(true)}
@@ -181,6 +183,8 @@ function App() {
                 <QwenInputArea />
               ) : isFireRedImageEdit ? (
                 <FireRedInputArea />
+              ) : isSenseNovaU1 ? (
+                <SenseNovaU1InputArea />
               ) : (
                 <InputArea />
               )}

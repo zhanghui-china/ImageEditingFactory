@@ -84,6 +84,14 @@ const models: ModelInfo[] = [
     description: 'FireRed 图像编辑模型',
     features: ['本地 GPU 推理', '图像编辑', 'vllm-omni', '高质量输出'],
   },
+  {
+    id: 'sensenova-u1-8b-mot',
+    name: 'SenseNova-U1-8B-MoT',
+    icon: ImagePlus,
+    color: 'text-blue-400',
+    description: 'SenseNova U1 文生图与图像编辑模型',
+    features: ['本地 GPU 推理', '文生图', '图像编辑', 'vllm-omni', '高质量输出'],
+  },
 ];
 
 export default function ModelSelector() {

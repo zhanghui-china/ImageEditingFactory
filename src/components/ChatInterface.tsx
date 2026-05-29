@@ -77,6 +77,26 @@ export default function ChatInterface({ onPreviewImages }: ChatInterfaceProps) {
                   {config.hidreamMode === 'subject-driven' && ' 当前模式：主体驱动'}
                 </>
               )}
+              {currentModel === 'ernie-image' && (
+                <>
+                  ERNIE-Image 是百度文心文生图模型，支持本地 GPU 推理，可生成高分辨率图片。
+                </>
+              )}
+              {currentModel === 'qwen-image-edit-2511' && (
+                <>
+                  Qwen-Image-Edit-2511 是通义千问图像编辑模型，支持本地 GPU 推理，可进行图像编辑和文生图。
+                </>
+              )}
+              {currentModel === 'firered-image-edit' && (
+                <>
+                  FireRed-Image-Edit 是图像编辑模型，使用 vllm-omni 服务，支持本地 GPU 推理，可进行高质量图像编辑。
+                </>
+              )}
+              {currentModel === 'sensenova-u1-8b-mot' && (
+                <>
+                  SenseNova-U1-8B-MoT 是图像编辑模型，使用 vllm-omni 服务，支持本地 GPU 推理，可进行高质量图像编辑。
+                </>
+              )}
             </p>
           </div>
         ) : (

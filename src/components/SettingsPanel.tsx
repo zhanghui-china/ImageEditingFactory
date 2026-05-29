@@ -30,6 +30,7 @@ export default function SettingsPanel() {
   const isErnieImage = currentModel === 'ernie-image';
   const isQwenImageEdit = currentModel === 'qwen-image-edit-2511';
   const isFireRedImageEdit = currentModel === 'firered-image-edit';
+  const isSenseNovaU1 = currentModel === 'sensenova-u1-8b-mot';
   const isFluxImageToImage = isFluxKlein && fluxMode === 'image-to-image';
 
   return (
@@ -884,6 +885,99 @@ export default function SettingsPanel() {
                 value={config.fireredSeed}
                 onChange={(e) => updateConfig({ fireredSeed: parseInt(e.target.value) })}
                 className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-red-400"
+              />
+            </div>
+          </>
+        )}
+
+        {isSenseNovaU1 && (
+          <>
+            {config.sensenovaU1Mode === 'text-to-image' && (
+              <>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Sliders size={14} className="text-blue-400" />
+                    <label className="text-xs text-text-secondary">图片宽度</label>
+                    <span className="text-xs text-text-muted ml-auto">{config.sensenovaU1Width}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="512"
+                    max="2048"
+                    step="128"
+                    value={config.sensenovaU1Width}
+                    onChange={(e) => updateConfig({ sensenovaU1Width: parseInt(e.target.value) })}
+                    className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-blue-400"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Sliders size={14} className="text-blue-400" />
+                    <label className="text-xs text-text-secondary">图片高度</label>
+                    <span className="text-xs text-text-muted ml-auto">{config.sensenovaU1Height}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="512"
+                    max="2048"
+                    step="128"
+                    value={config.sensenovaU1Height}
+                    onChange={(e) => updateConfig({ sensenovaU1Height: parseInt(e.target.value) })}
+                    className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-blue-400"
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-blue-400" />
+                <label className="text-xs text-text-secondary">推理步数</label>
+                <span className="text-xs text-text-muted ml-auto">{config.sensenovaU1Steps}</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="100"
+                step="1"
+                value={config.sensenovaU1Steps}
+                onChange={(e) => updateConfig({ sensenovaU1Steps: parseInt(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-blue-400"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-blue-400" />
+                <label className="text-xs text-text-secondary">引导强度</label>
+                <span className="text-xs text-text-muted ml-auto">{config.sensenovaU1GuidanceScale.toFixed(1)}</span>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="10.0"
+                step="0.5"
+                value={config.sensenovaU1GuidanceScale}
+                onChange={(e) => updateConfig({ sensenovaU1GuidanceScale: parseFloat(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-blue-400"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Sliders size={14} className="text-blue-400" />
+                <label className="text-xs text-text-secondary">随机种子</label>
+                <span className="text-xs text-text-muted ml-auto">{config.sensenovaU1Seed}</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="9999"
+                step="1"
+                value={config.sensenovaU1Seed}
+                onChange={(e) => updateConfig({ sensenovaU1Seed: parseInt(e.target.value) })}
+                className="w-full h-2 bg-card-bg rounded-lg appearance-none cursor-pointer accent-blue-400"
               />
             </div>
           </>

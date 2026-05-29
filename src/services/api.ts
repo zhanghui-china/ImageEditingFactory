@@ -15,6 +15,10 @@ const QWEN_API_URL_FULL = import.meta.env.VITE_QWEN_API_URL || 'http://192.168.1
 const FIRERED_API_URL = '/firered-api';
 // 用于生产环境的完整 URL
 const FIRERED_API_URL_FULL = import.meta.env.VITE_FIRERED_API_URL || 'http://192.168.199.107:8091';
+// SenseNova-U1-8B-MoT API (开发环境使用代理
+const SENSENOVA_U1_API_URL = '/sensenova-u1-api';
+// 用于生产环境的完整 URL
+const SENSENOVA_U1_API_URL_FULL = import.meta.env.VITE_SENSENOVA_U1_API_URL || 'http://192.168.199.107:8092';
 
 interface SendMessageParams {
   apiKey: string;
@@ -1058,6 +1062,190 @@ export async function fireRedEditImage({
     onComplete(imageUrls);
   } catch (error) {
     console.error('FireRed-Image-Edit 错误:', error);
+    onError(error instanceof Error ? error.message : '未知错误');
+  }
+}
+
+// ====================================
+// SenseNova-U1-8B-MoT 服务
+// ====================================
+
+interface SenseNovaU1TextToImageParams {
+  prompt: string;
+  numInferenceSteps?: number;
+  guidanceScale?: number;
+  seed?: number;
+  width?: number;
+  height?: number;
+  onComplete: (imageUrls: string[]) => void;
+  onError: (error: string) => void;
+  signal?: AbortSignal;
+}
+
+interface SenseNovaU1EditImageParams {
+  prompt: string;
+  images: File[];
+  numInferenceSteps?: number;
+  guidanceScale?: number;
+  seed?: number;
+  onComplete: (imageUrls: string[]) => void;
+  onError: (error: string) => void;
+  signal?: AbortSignal;
+}
+
+export async function senseNovaU1TextToImage({
+  prompt,
+  numInferenceSteps = 50,
+  guidanceScale = 1.0,
+  seed = 42,
+  width = 1024,
+  height = 1024,
+  onComplete,
+  onError,
+  signal,
+}: SenseNovaU1TextToImageParams): Promise<void> {
+  try {
+    // 构建请求体 - 按照 vllm-omni 文生图格式
+    const requestBody = {
+      messages: [{ 
+        role: 'user', 
+        content: [{ type: 'text', text: prompt }]
+      }],
+      extra_body: {
+        num_inference_steps: numInferenceSteps,
+        cfg_scale: guidanceScale,
+        seed: seed,
+        layers: 4,
+        resolution: Math.min(width, height)
+      }
+    };
+
+    console.log('发送文生图请求到 SenseNova-U1-8B-MoT 服务...');
+    const response = await fetch(`${SENSENOVA_U1_API_URL}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+      signal,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || errorData.message || `请求失败: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('SenseNova-U1-8B-MoT 文生图响应:', data);
+    
+    // 解析响应 - 按照 vllm-omni 格式
+    let imageUrls: string[] = [];
+    if (data.choices && data.choices[0]?.message?.content) {
+      const respContent = data.choices[0].message.content;
+      if (Array.isArray(respContent)) {
+        respContent.forEach((item: any) => {
+          if (item.type === 'image_url' && item.image_url?.url) {
+            imageUrls.push(item.image_url.url);
+          }
+        });
+      }
+    }
+    
+    if (imageUrls.length === 0) {
+      throw new Error('未找到生成的图片');
+    }
+    
+    onComplete(imageUrls);
+  } catch (error) {
+    console.error('SenseNova-U1-8B-MoT 文生图错误:', error);
+    onError(error instanceof Error ? error.message : '未知错误');
+  }
+}
+
+export async function senseNovaU1EditImage({
+  prompt,
+  images,
+  numInferenceSteps = 50,
+  guidanceScale = 1.0,
+  seed = 42,
+  onComplete,
+  onError,
+  signal,
+}: SenseNovaU1EditImageParams): Promise<void> {
+  try {
+    // 将文件转换为 base64
+    const imagesBase64: string[] = [];
+    for (const image of images) {
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onload = () => resolve(reader.result as string);
+      });
+      reader.readAsDataURL(image);
+      imagesBase64.push(await base64Promise);
+    }
+
+    // 构建请求体 - 按照 vllm-omni 格式
+    const content: any[] = [];
+    
+    // 添加图片
+    imagesBase64.forEach(base64 => {
+      content.push({
+        type: 'image_url',
+        image_url: { url: base64 }
+      });
+    });
+    
+    // 添加文本
+    content.push({ type: 'text', text: prompt });
+    
+    const requestBody = {
+      messages: [{ 
+        role: 'user', 
+        content: content 
+      }],
+      extra_body: {
+        num_inference_steps: numInferenceSteps,
+        cfg_scale: guidanceScale,
+        seed: seed,
+        layers: 4,
+        resolution: 640
+      }
+    };
+
+    console.log('发送图像编辑请求到 SenseNova-U1-8B-MoT 服务...');
+    const response = await fetch(`${SENSENOVA_U1_API_URL}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+      signal,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || errorData.message || `请求失败: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('SenseNova-U1-8B-MoT 图像编辑响应:', data);
+    
+    // 解析响应 - 按照 vllm-omni 格式
+    let imageUrls: string[] = [];
+    if (data.choices && data.choices[0]?.message?.content) {
+      const respContent = data.choices[0].message.content;
+      if (Array.isArray(respContent)) {
+        respContent.forEach((item: any) => {
+          if (item.type === 'image_url' && item.image_url?.url) {
+            imageUrls.push(item.image_url.url);
+          }
+        });
+      }
+    }
+    
+    if (imageUrls.length === 0) {
+      throw new Error('未找到生成的图片');
+    }
+    
+    onComplete(imageUrls);
+  } catch (error) {
+    console.error('SenseNova-U1-8B-MoT 图像编辑错误:', error);
     onError(error instanceof Error ? error.message : '未知错误');
   }
 }
