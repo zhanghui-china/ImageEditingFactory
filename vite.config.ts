@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   base: './',
   server: {
+    host: '127.0.0.1',
     port: 5173,
     proxy: {
       '/api/generate': {
@@ -53,12 +54,12 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/qwen-images/, ''),
       },
       '/firered-api': {
-        target: 'http://192.168.199.107:6000',
+        target: 'http://192.168.199.107:8091',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/firered-api/, ''),
       },
       '/firered-images': {
-        target: 'http://192.168.199.107:6000',
+        target: 'http://192.168.199.107:8091',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/firered-images/, ''),
       },

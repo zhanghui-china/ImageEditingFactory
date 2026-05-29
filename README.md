@@ -16,6 +16,7 @@
 | **HiDream-O1-Image** | 文生图 + 编辑 + 主体驱动 | Pixel-level 统一多模态模型 |
 | **ERNIE-Image** | 文生图 | 百度文心文生图模型，支持 PE 增强 |
 | **Qwen-Image-Edit-2511** | 图像编辑 | 通义千问图像编辑模型，支持高质量图像编辑和多图片批量处理 |
+| **FireRed-Image-Edit** | 图像编辑 | FireRed 图像编辑模型，使用 vLLM-Omni 部署，支持高质量图像编辑 |
 
 ### 核心功能
 
@@ -56,6 +57,7 @@
 │   │   ├── InputArea.tsx            # 输入区域 (其他模型)
 │   │   ├── ErnieInputArea.tsx       # 输入区域 (ERNIE-Image)
 │   │   ├── QwenInputArea.tsx        # 输入区域 (Qwen-Image-Edit)
+│   │   ├── FireRedInputArea.tsx     # 输入区域 (FireRed-Image-Edit)
 │   │   ├── FluxInputArea.tsx        # 输入区域 (FLUX)
 │   │   ├── JoyAIInputArea.tsx       # 输入区域 (JoyAI)
 │   │   ├── HiDreamInputArea.tsx     # 输入区域 (HiDream)
@@ -367,6 +369,47 @@ Qwen-Image-Edit-2511 是通义千问的图像编辑模型，支持高质量的�
 - Qwen-Image-Edit-2511 后端会返回所有图像编辑后的图片，前端会自动显示并保存到历史记录中
 - 生成的图片会以 base64 格式保存，确保刷新页面后仍能正常查看
 - 后端同时兼容单文件和多文件上传格式，保持向后兼容
+
+### FireRed-Image-Edit
+
+FireRed-Image-Edit 是 FireRed Team 开发的图像编辑模型，使用 vLLM-Omni 部署，支持高质量图像编辑功能。
+
+**部署步骤：**
+
+1. 在 GPU 服务器上使用 vLLM-Omni 启动 FireRed-Image-Edit 服务：
+
+```bash
+# 使用 vLLM-Omni 启动服务
+# 服务默认运行在 http://192.168.199.107:8091
+```
+
+2. 在前端 `.env` 文件中配置服务器地址（如需要）
+
+```env
+VITE_FIRERED_API_URL=http://192.168.199.107:8091
+```
+
+3. 使用说明：
+   - 选择 **FireRed-Image-Edit** 模型
+   - 点击上传区域或拖拽图片到上传框（支持多张图片）
+   - 上传的图片会在顶部显示预览，支持水平滚动查看
+   - 每张图片旁边都有删除按钮，可以单独移除
+   - 输入描述你想要如何编辑这些图片的提示词
+   - 可以在左侧设置面板调整参数：
+     - 推理步数
+     - 引导强度
+     - 随机种子
+   - 点击"编辑"按钮开始生成
+   - 生成过程中可以点击"停止"按钮随时中断
+
+**API 格式：**
+FireRed-Image-Edit 使用 OpenAI 兼容的聊天完成 API 格式，支持多模态输入（图片+文本）。
+
+**注意事项：**
+- 图片在前，文本在后的输入顺序
+- 后端返回 OpenAI 兼容格式的响应
+- 生成的图片会直接以 base64 格式返回
+- 前端通过 Vite 代理解决 CORS 跨域问题
 
 ### 历史查询
 

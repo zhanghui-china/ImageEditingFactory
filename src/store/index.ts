@@ -81,6 +81,22 @@ const defaultConfig: ModelConfig = {
   fireredSeed: 42,
 };
 
+// 清理 localStorage 中的旧数据，避免空间溢出
+try {
+  const storage = localStorage.getItem('sensenova-storage');
+  if (storage) {
+    const parsed = JSON.parse(storage);
+    if (parsed.state?.messagesByModel) {
+      // 删除消息历史
+      delete parsed.state.messagesByModel;
+      localStorage.setItem('sensenova-storage', JSON.stringify(parsed));
+    }
+  }
+} catch (e) {
+  // 如果出错，清空整个 storage
+  localStorage.removeItem('sensenova-storage');
+}
+
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -189,7 +205,8 @@ export const useStore = create<AppState>()(
         currentModel: state.currentModel,
         config: state.config,
         fluxMode: state.fluxMode,
-        messagesByModel: state.messagesByModel,
+        // 暂时不保存 messagesByModel，避免 localStorage 溢出
+        // messagesByModel: state.messagesByModel,
       }),
       merge: (persistedState, currentState) => {
         const ps = persistedState as Partial<AppState>;

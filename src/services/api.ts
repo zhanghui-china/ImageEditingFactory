@@ -14,7 +14,7 @@ const QWEN_API_URL_FULL = import.meta.env.VITE_QWEN_API_URL || 'http://192.168.1
 // FireRed-Image-Edit API (开发环境使用代理
 const FIRERED_API_URL = '/firered-api';
 // 用于生产环境的完整 URL
-const FIRERED_API_URL_FULL = import.meta.env.VITE_FIRERED_API_URL || 'http://192.168.199.107:6000';
+const FIRERED_API_URL_FULL = import.meta.env.VITE_FIRERED_API_URL || 'http://192.168.199.107:8091';
 
 interface SendMessageParams {
   apiKey: string;
@@ -994,28 +994,35 @@ export async function fireRedEditImage({
       imagesBase64.push(await base64Promise);
     }
 
-    // 构建请求体
-    const content = [
-      { type: 'text', text: prompt }
-    ];
+    // 构建请求体 - 按照 curl 示例格式
+    const content: any[] = [];
     
-    // 添加图片到内容
+    // 添加图片
     imagesBase64.forEach(base64 => {
       content.push({
         type: 'image_url',
         image_url: { url: base64 }
       });
     });
-
+    
+    // 添加文本
+    content.push({ type: 'text', text: prompt });
+    
     const requestBody = {
-      messages: [{ role: 'user', content }],
+      messages: [{ 
+        role: 'user', 
+        content: content 
+      }],
       extra_body: {
         num_inference_steps: numInferenceSteps,
-        guidance_scale: guidanceScale,
-        seed: seed
+        cfg_scale: guidanceScale,
+        seed: seed,
+        layers: 4,
+        resolution: 640
       }
     };
 
+    console.log('发送请求到 FireRed 服务...');
     const response = await fetch(`${FIRERED_API_URL}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1029,52 +1036,28 @@ export async function fireRedEditImage({
     }
 
     const data = await response.json();
+    console.log('FireRed 响应:', data);
     
-    // 处理响应 - 根据 OpenAI 兼容格式，可能返回图片 URL 或 base64
+    // 解析响应 - 按照 curl 示例中的格式
     let imageUrls: string[] = [];
     if (data.choices && data.choices[0]?.message?.content) {
-      const content = data.choices[0].message.content;
-      if (typeof content === 'string') {
-        // 尝试解析 JSON 或直接使用
-        try {
-          const parsed = JSON.parse(content);
-          if (parsed.images) {
-            imageUrls = parsed.images;
-          } else if (parsed.image) {
-            imageUrls = [parsed.image];
+      const respContent = data.choices[0].message.content;
+      if (Array.isArray(respContent)) {
+        respContent.forEach((item: any) => {
+          if (item.type === 'image_url' && item.image_url?.url) {
+            imageUrls.push(item.image_url.url);
           }
-        } catch {
-          // 如果不是 JSON，检查是否是 base64 图片
-          if (content.startsWith('data:')) {
-            imageUrls = [content];
-          } else if (content.startsWith('http')) {
-            imageUrls = [content];
-          }
-        }
+        });
       }
     }
     
-    // 备用处理方式：检查响应中是否有 images 字段
-    if (imageUrls.length === 0 && data.images) {
-      imageUrls = data.images;
-    }
-    
-    // 如果没有找到图片，抛出错误
     if (imageUrls.length === 0) {
       throw new Error('未找到生成的图片');
     }
     
-    // 处理图片 URL
-    imageUrls = imageUrls.map(url => {
-      if (url.startsWith('/')) {
-        return `/firered-images${url}`;
-      }
-      return url;
-    });
-    
     onComplete(imageUrls);
   } catch (error) {
-    console.error('FireRed-Image-Edit 请求异常:', error);
+    console.error('FireRed-Image-Edit 错误:', error);
     onError(error instanceof Error ? error.message : '未知错误');
   }
 }

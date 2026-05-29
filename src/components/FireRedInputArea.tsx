@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Send, Loader2, Image as ImageIcon, X, Upload, StopCircle } from 'lucide-react';
+import { Send, X, Upload, StopCircle } from 'lucide-react';
 import { useStore } from '../store';
 import { fireRedEditImage } from '../services/api';
 import { saveHistory } from '../services/historyApi';
@@ -84,24 +84,40 @@ export default function FireRedInputArea() {
   };
 
   const handleSend = async () => {
-    if (!input.trim()) return;
+    console.log('handleSend 被调用');
+    console.log('输入内容:', input);
+    console.log('图片数量:', imageFiles.length);
+    console.log('isLoading:', isLoading);
+    
+    if (!input.trim()) {
+      console.log('输入为空，返回');
+      return;
+    }
     if (imageFiles.length === 0) {
+      console.log('没有图片，设置错误');
       setError('请先选择要编辑的图片');
       return;
     }
-    if (isLoading) return;
+    if (isLoading) {
+      console.log('正在加载中，返回');
+      return;
+    }
 
+    console.log('开始处理请求...');
     const abortController = new AbortController();
     setAbortController(abortController);
 
     const startTime = Date.now();
     const requestTime = new Date().toISOString();
     const requestImagesBase64 = await Promise.all(imageFiles.map(fileToBase64));
+    const currentInput = input;
+    const currentFiles = [...imageFiles];
     
+    console.log('创建用户消息...');
     const userMessage = {
       id: Date.now().toString(),
       role: 'user' as const,
-      content: input,
+      content: currentInput,
       images: requestImagesBase64,
       timestamp: Date.now(),
       model: currentModel,
@@ -109,8 +125,8 @@ export default function FireRedInputArea() {
 
     addMessage(userMessage);
     setLoading(true);
-    const currentInput = input;
-    const currentFiles = [...imageFiles];
+    
+    console.log('清空输入...');
     setInput('');
     setImageFiles([]);
     setImagePreviews([]);
@@ -118,33 +134,24 @@ export default function FireRedInputArea() {
       fileInputRef.current.value = '';
     }
 
+    console.log('调用 fireRedEditImage...');
     fireRedEditImage({
-      prompt: input,
+      prompt: currentInput,
       images: currentFiles,
       numInferenceSteps: config.fireredSteps,
       guidanceScale: config.fireredGuidanceScale,
       seed: config.fireredSeed,
       signal: abortController.signal,
       onComplete: async (imageUrls) => {
+        console.log('收到 onComplete，图片数量:', imageUrls.length);
         const duration = Date.now() - startTime;
         const responseTime = new Date().toISOString();
         
-        // 转换为base64保存
-        const savedImageUrls = await Promise.all(
-          imageUrls.map(async (url) => {
-            // 只要不是 data URL 格式，都尝试转换为 base64
-            if (!url.startsWith('data:')) {
-              return await urlToBase64(url);
-            }
-            return url;
-          })
-        );
-
         const assistantMessage = {
           id: (Date.now() + 1).toString(),
           role: 'assistant' as const,
           content: '',
-          images: savedImageUrls,
+          images: imageUrls,
           timestamp: Date.now(),
           model: currentModel,
           duration: duration,
@@ -158,17 +165,17 @@ export default function FireRedInputArea() {
           prompt: currentInput,
           request_images: requestImagesBase64,
           response_result: 'success',
-          response_images: savedImageUrls,
+          response_images: imageUrls,
           request_time: requestTime,
           response_time: responseTime,
           duration_ms: duration,
         }).catch(err => console.error('Failed to save history:', err));
       },
       onError: async (error) => {
+        console.log('收到 onError，错误:', error);
         const duration = Date.now() - startTime;
         const responseTime = new Date().toISOString();
-        // 忽略 AbortError
-        if (error !== '请求已取消' && !(error instanceof Error && error.name === 'AbortError')) {
+        if (error !== '请求已取消' && !(typeof error === 'object' && error !== null && 'name' in error && (error as any).name === 'AbortError')) {
           setError(error);
         }
         setLoading(false);
