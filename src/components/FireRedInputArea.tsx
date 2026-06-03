@@ -88,7 +88,7 @@ export default function FireRedInputArea() {
     console.log('输入内容:', input);
     console.log('图片数量:', imageFiles.length);
     console.log('isLoading:', isLoading);
-    
+
     if (!input.trim()) {
       console.log('输入为空，返回');
       return;
@@ -112,7 +112,7 @@ export default function FireRedInputArea() {
     const requestImagesBase64 = await Promise.all(imageFiles.map(fileToBase64));
     const currentInput = input;
     const currentFiles = [...imageFiles];
-    
+
     console.log('创建用户消息...');
     const userMessage = {
       id: Date.now().toString(),
@@ -125,7 +125,7 @@ export default function FireRedInputArea() {
 
     addMessage(userMessage);
     setLoading(true);
-    
+
     console.log('清空输入...');
     setInput('');
     setImageFiles([]);
@@ -146,7 +146,7 @@ export default function FireRedInputArea() {
         console.log('收到 onComplete，图片数量:', imageUrls.length);
         const duration = Date.now() - startTime;
         const responseTime = new Date().toISOString();
-        
+
         const assistantMessage = {
           id: (Date.now() + 1).toString(),
           role: 'assistant' as const,
@@ -227,7 +227,7 @@ export default function FireRedInputArea() {
               ))}
             </div>
           )}
-          
+
           {/* Upload Area - always visible */}
           <div
             onDragOver={handleDragOver}
@@ -267,7 +267,7 @@ export default function FireRedInputArea() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="描述你想要如何编辑这些图片..."
+              placeholder="描述你想要如何编辑这些图片.."
               className="w-full bg-deep-bg border border-card-bg rounded-xl px-4 py-3 pr-12 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-red-500/50 resize-none transition-all"
               rows={1}
               style={{ minHeight: '48px', maxHeight: '120px' }}
