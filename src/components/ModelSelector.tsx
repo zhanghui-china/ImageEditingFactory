@@ -1,4 +1,4 @@
-import { Bot, Sparkles, Zap, Palette, Wand2, Layers, Brain, ImagePlus } from 'lucide-react';
+import { Bot, Sparkles, Zap, Palette, Wand2, Layers, Brain, ImagePlus, MessageSquare } from 'lucide-react';
 import { ModelType } from '../types';
 import { useStore } from '../store';
 
@@ -27,6 +27,14 @@ const models: ModelInfo[] = [
     color: 'text-deepseek-purple',
     description: '高性能深度思考模型',
     features: ['商汤在线推理', '思考模式', '工具调用', 'JSON 输出'],
+  },
+  {
+    id: 'qwen3.5-9b',
+    name: 'Qwen3.5-9B',
+    icon: MessageSquare,
+    color: 'text-orange-500',
+    description: '通义千问文本对话模型',
+    features: ['本地 GPU 推理', '文本对话', 'vLLM', '高质量输出'],
   },
   {
     id: 'sensenova-u1-fast',
@@ -77,13 +85,13 @@ const models: ModelInfo[] = [
     features: ['本地 GPU 推理', '图像编辑', '文生图', '高质量输出'],
   },
   {
-          id: 'firered-image-edit',
-          name: 'FireRed-Image-Edit',
-          icon: ImagePlus,
-          color: 'text-red-400',
-          description: 'FireRed 图像编辑模型',
-          features: ['本地 GPU 推理', '图像编辑', 'vllm-omni', '高质量输出'],
-        },
+    id: 'firered-image-edit',
+    name: 'FireRed-Image-Edit',
+    icon: ImagePlus,
+    color: 'text-red-400',
+    description: 'FireRed 图像编辑模型',
+    features: ['本地 GPU 推理', '图像编辑', 'vllm-omni', '高质量输出'],
+  },
   {
     id: 'sensenova-u1-8b-mot',
     name: 'SenseNova-U1-8B-MoT',
@@ -120,6 +128,8 @@ export default function ModelSelector() {
                         ? '#3b82f6'
                         : model.color === 'text-deepseek-purple'
                         ? '#8b5cf6'
+                        : model.color === 'text-orange-500'
+                        ? '#f97316'
                         : model.color === 'text-emerald-400'
                         ? '#34d399'
                         : model.color === 'text-pink-400'

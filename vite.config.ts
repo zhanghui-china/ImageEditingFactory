@@ -73,6 +73,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/sensenova-u1-images/, ''),
       },
+      '/qwen35-api': {
+        target: 'http://192.168.199.107:8000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/qwen35-api/, ''),
+      },
       '/api/history': {
         target: 'http://localhost:8789',
         changeOrigin: true,

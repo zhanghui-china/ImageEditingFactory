@@ -18,6 +18,7 @@
 | **Qwen-Image-Edit-2511** | 图像编辑 | 通义千问图像编辑模型，支持高质量图像编辑和多图片批量处理 |
 | **FireRed-Image-Edit** | 图像编辑 | FireRed 图像编辑模型，使用 vllm-omni 部署，支持高质量图像编辑 |
 | **SenseNova-U1-8B-MoT** | 文生图/图像编辑 | SenseNova U1 模型，使用 vllm-omni 部署，支持文生图和图像编辑 |
+| **Qwen3.5-9B** | 文本对话 | 通义千问文本对话模型，使用 vLLM 部署，支持高质量文本生成 |
 
 ### 核心功能
 
@@ -142,6 +143,9 @@ VITE_FIRERED_API_URL=http://[DGX Spark IP]:8091
 
 # SenseNova-U1-8B-MoT API Server URL (仅用于生产环境，开发环境使用 Vite 代理)
 VITE_SENSENOVA_U1_API_URL=http://[DGX Spark IP]:8092
+
+# Qwen3.5-9B API Server URL (仅用于生产环境，开发环境使用 Vite 代理)
+VITE_QWEN35_API_URL=http://[DGX Spark IP]:8000
 ```
 
 ### 2. 前端启动
@@ -294,6 +298,24 @@ vllm serve /home1/zhanghui/models/SenseNova/SenseNova-U1-8B-MoT   \
 
 部署 SenseNova-U1-8B-MoT：https://zhuanlan.zhihu.com/p/2043447509859693194
 
+#### Qwen3.5-9B 后端
+
+```bash
+conda activate vllm311
+
+# 启动 Qwen3.5-9B 服务
+vllm serve Qwen/Qwen2.5-32B-Instruct  \
+  --port 8000 \
+  --trust-remote-code \
+  --gpu-memory-utilization 0.9 \
+  --max-model-len 4096 \
+  --max-num-seqs 128 \
+  --dtype bfloat16
+```
+
+服务会在 `http://0.0.0.0:8000` 启动。
+
+部署 Qwen3.5-9B：https://zhuanlan.zhihu.com/p/2032190923426227693
 
 
 ## 使用说明
@@ -512,6 +534,41 @@ SenseNova-U1-8B-MoT 使用 OpenAI 兼容的聊天完成 API 格式，支持多�
 - 图片在前，文本在后的输入顺序
 - 后端返回 OpenAI 兼容格式的响应
 - 生成的图片会直接以 base64 格式返回
+- 前端通过 Vite 代理解决 CORS 跨域问题
+
+### Qwen3.5-9B
+
+Qwen3.5-9B 是通义千问的文本对话模型，使用 vLLM 部署，支持高质量文本生成功能。
+
+**部署步骤：**
+
+1. 在 GPU 服务器上使用 vLLM 启动 Qwen3.5-9B 服务：
+
+```bash
+# 使用 vLLM 启动服务
+# 服务默认运行在 http://192.168.199.107:8000
+```
+
+2. 在前端 `.env` 文件中配置服务器地址（如需要）
+
+```env
+VITE_QWEN35_API_URL=http://192.168.199.107:8000
+```
+
+3. 使用说明：
+   - 选择 **Qwen3.5-9B** 模型
+   - 输入你的问题或对话内容
+   - 可以在左侧设置面板调整参数：
+     - 温度
+     - 最大 Token 数
+   - 点击发送开始对话
+   - 生成过程中可以点击"停止"按钮随时中断
+
+**API 格式：**
+Qwen3.5-9B 使用 OpenAI 兼容的聊天完成 API 格式。
+
+**注意事项：**
+- 后端返回 OpenAI 兼容格式的响应
 - 前端通过 Vite 代理解决 CORS 跨域问题
 
 ### 历史查询

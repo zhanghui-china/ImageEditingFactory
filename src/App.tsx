@@ -133,6 +133,7 @@ function App() {
             {currentModel === 'sensenova-6.7-flash-lite' && 'SenseNova 6.7 Flash-Lite'}
             {currentModel === 'sensenova-u1-fast' && 'SenseNova U1 Fast'}
             {currentModel === 'deepseek-v4-flash' && 'DeepSeek V4 Flash'}
+            {currentModel === 'qwen3.5-9b' && 'Qwen3.5-9B'}
             {currentModel === 'ernie-image' && 'ERNIE-Image'}
             {currentModel === 'qwen-image-edit-2511' && 'Qwen-Image-Edit-2511'}
             {currentModel === 'firered-image-edit' && 'FireRed-Image-Edit'}

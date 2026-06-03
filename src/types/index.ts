@@ -8,7 +8,8 @@ export type ModelType =
   | 'ernie-image' 
   | 'qwen-image-edit-2511'
   | 'firered-image-edit'
-  | 'sensenova-u1-8b-mot';
+  | 'sensenova-u1-8b-mot'
+  | 'qwen3.5-9b';
 
 export interface Message {
   id: string;

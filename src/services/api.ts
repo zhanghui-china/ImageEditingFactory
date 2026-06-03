@@ -19,6 +19,12 @@ const FIRERED_API_URL_FULL = import.meta.env.VITE_FIRERED_API_URL || 'http://192
 const SENSENOVA_U1_API_URL = '/sensenova-u1-api';
 // 用于生产环境的完整 URL
 const SENSENOVA_U1_API_URL_FULL = import.meta.env.VITE_SENSENOVA_U1_API_URL || 'http://192.168.199.107:8092';
+// Qwen3.5-9B API (开发环境使用代理
+const QWEN35_API_URL = '/qwen35-api';
+// 用于生产环境的完整 URL
+const QWEN35_API_URL_FULL = import.meta.env.VITE_QWEN35_API_URL || 'http://192.168.199.107:8000';
+const QWEN35_API_KEY = import.meta.env.VITE_QWEN35_API_KEY || 'sk-pLpCvK8NRc30yx8KrT6DKbxEo85webUfxHZQe8ardv61sxB4';
+const QWEN35_MODEL_NAME = import.meta.env.VITE_QWEN35_MODEL_NAME || 'DGX-Qwen3.5-9B';
 
 interface SendMessageParams {
   apiKey: string;
@@ -80,19 +86,30 @@ export async function sendChatMessage({
       };
     }
 
-    const response = await fetch(`${BASE_URL}/chat/completions`, {
+    // 确定 API URL
+    let apiUrl = BASE_URL;
+    let headers: any = {
+      'Content-Type': 'application/json',
+    };
+
+    if (model === 'qwen3.5-9b') {
+      apiUrl = QWEN35_API_URL;
+      requestBody.model = QWEN35_MODEL_NAME;
+      headers.Authorization = `Bearer ${QWEN35_API_KEY}`;
+    } else {
+      headers.Authorization = `Bearer ${apiKey}`;
+    }
+
+    const response = await fetch(`${apiUrl}/v1/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers,
       body: JSON.stringify(requestBody),
       signal,
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error?.message || `API 请求失败: ${response.status}`);
+      throw new Error(errorData.error?.message || errorData.message || `API 请求失败: ${response.status}`);
     }
 
     const reader = response.body?.getReader();
