@@ -87,20 +87,21 @@ export async function sendChatMessage({
     }
 
     // 确定 API URL
-    let apiUrl = BASE_URL;
+    let apiUrl = `${BASE_URL}/chat/completions`;
     let headers: any = {
       'Content-Type': 'application/json',
     };
 
     if (model === 'qwen3.5-9b') {
-      apiUrl = QWEN35_API_URL;
+      apiUrl = `${QWEN35_API_URL}/v1/chat/completions`;
       requestBody.model = QWEN35_MODEL_NAME;
+      requestBody.chat_template_kwargs = { enable_thinking: true };
       headers.Authorization = `Bearer ${QWEN35_API_KEY}`;
     } else {
       headers.Authorization = `Bearer ${apiKey}`;
     }
 
-    const response = await fetch(`${apiUrl}/v1/chat/completions`, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody),
@@ -146,6 +147,11 @@ export async function sendChatMessage({
 
             if (model === 'deepseek-v4-flash' && delta?.reasoning_content) {
               fullReasoning += delta.reasoning_content;
+              onChunk(fullContent, fullReasoning);
+            }
+
+            if (model === 'qwen3.5-9b' && delta?.reasoning) {
+              fullReasoning += delta.reasoning;
               onChunk(fullContent, fullReasoning);
             }
           } catch (e) {

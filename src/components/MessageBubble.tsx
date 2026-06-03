@@ -49,6 +49,8 @@ export default function MessageBubble({ message, onPreviewImages }: MessageBubbl
             className={
               currentModel === 'deepseek-v4-flash'
                 ? 'text-deepseek-purple'
+                : currentModel === 'qwen3.5-9b'
+                ? 'text-orange-500'
                 : currentModel === 'sensenova-u1-fast'
                 ? 'text-u1-orange'
                 : 'text-sensenova-blue'
@@ -69,7 +71,7 @@ export default function MessageBubble({ message, onPreviewImages }: MessageBubbl
               : 'bg-card-bg text-text-primary rounded-bl-md'
           }`}
         >
-          {message.reasoningContent && currentModel === 'deepseek-v4-flash' && (
+          {message.reasoningContent && (currentModel === 'deepseek-v4-flash' || currentModel === 'qwen3.5-9b') && (
             <div className="mb-3 p-3 bg-deep-bg rounded-lg border-l-4 border-deepseek-purple">
               <div className="text-xs text-deepseek-purple font-medium mb-1 flex items-center gap-1">
                 <Sparkles size={12} />

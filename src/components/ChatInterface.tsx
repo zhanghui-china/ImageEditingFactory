@@ -97,6 +97,11 @@ export default function ChatInterface({ onPreviewImages }: ChatInterfaceProps) {
                   SenseNova-U1-8B-MoT 是图像编辑模型，使用 vllm-omni 服务，支持本地 GPU 推理，可进行高质量图像编辑。
                 </>
               )}
+              {currentModel === 'qwen3.5-9b' && (
+                <>
+                  Qwen3.5-9B 是通义千问文本对话模型，支持思考模式，可以为你提供详细的推理过程。
+                </>
+              )}
             </p>
           </div>
         ) : (
