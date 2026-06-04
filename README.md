@@ -18,7 +18,7 @@
 | **Qwen-Image-Edit-2511** | 图像编辑 | 通义千问图像编辑模型，支持高质量图像编辑和多图片批量处理 |
 | **FireRed-Image-Edit** | 图像编辑 | FireRed 图像编辑模型，使用 vllm-omni 部署，支持高质量图像编辑 |
 | **SenseNova-U1-8B-MoT** | 文生图/图像编辑 | SenseNova U1 模型，使用 vllm-omni 部署，支持文生图和图像编辑 |
-| **Qwen3.5-9B** | 文本对话 | 通义千问文本对话模型，使用 vLLM 部署，支持高质量文本生成 |
+| **Qwen3.5-9B** | 文本对话 + 思考模式 | 通义千问文本对话模型，使用 vLLM 部署，支持思考模式和高质量文本生成 |
 
 ### 核心功能
 
@@ -146,6 +146,12 @@ VITE_SENSENOVA_U1_API_URL=http://[DGX Spark IP]:8092
 
 # Qwen3.5-9B API Server URL (仅用于生产环境，开发环境使用 Vite 代理)
 VITE_QWEN35_API_URL=http://[DGX Spark IP]:8000
+
+# Qwen3.5-9B API Key
+VITE_QWEN35_API_KEY=your-qwen35-api-key-here
+
+# Qwen3.5-9B Model Name (served-model-name)
+VITE_QWEN35_MODEL_NAME=DGX-Qwen3.5-9B
 ```
 
 ### 2. 前端启动
@@ -301,19 +307,33 @@ vllm serve /home1/zhanghui/models/SenseNova/SenseNova-U1-8B-MoT   \
 #### Qwen3.5-9B 后端
 
 ```bash
-conda activate vllm311
+# 创建配置文件 model_qwen35_p8000.yaml
+cat > model_qwen35_p8000.yaml << 'EOF'
+host: "0.0.0.0"
+port: 8000
+reasoning-parser: "qwen3"
+enable-auto-tool-choice: true
+tool-call-parser: "qwen3_xml"
+dtype: auto
+max-model-len: 128K
+api-key: "sk-your-api-key-here"
+disable-custom-all-reduce: true
+generation-config: "vllm"
+gpu-memory-utilization: 0.3
+language-model-only: true
+EOF
 
-# 启动 Qwen3.5-9B 服务
-vllm serve Qwen/Qwen2.5-32B-Instruct  \
-  --port 8000 \
-  --trust-remote-code \
-  --gpu-memory-utilization 0.9 \
-  --max-model-len 4096 \
-  --max-num-seqs 128 \
-  --dtype bfloat16
+# 使用 Docker 启动 Qwen3.5-9B 服务
+docker run -d --gpus all --rm \
+       -v /home1/zhanghui/models/Qwen:/mnt/ \
+       -p 0.0.0.0:8000:8000/tcp \
+       --name qwen35_9b vllm/vllm-openai:cu130-nightly /mnt/Qwen3___5-9B \
+       --served-model-name DGX-Qwen3.5-9B \
+       --config /mnt/Qwen3___5-9B/model_qwen35_p8000.yaml \
+       --speculative-config '{"method": "mtp", "num_speculative_tokens": 1}'
 ```
 
-服务会在 `http://0.0.0.0:8000` 启动。
+服务会在 `http://0.0.0.0:8000` 启动，支持思考模式（reasoning-parser: "qwen3"）。
 
 部署 Qwen3.5-9B：https://zhuanlan.zhihu.com/p/2032190923426227693
 
@@ -538,37 +558,49 @@ SenseNova-U1-8B-MoT 使用 OpenAI 兼容的聊天完成 API 格式，支持多�
 
 ### Qwen3.5-9B
 
-Qwen3.5-9B 是通义千问的文本对话模型，使用 vLLM 部署，支持高质量文本生成功能。
+Qwen3.5-9B 是通义千问的文本对话模型，使用 vLLM Docker 部署，支持思考模式和高质量文本生成功能。
 
 **部署步骤：**
 
-1. 在 GPU 服务器上使用 vLLM 启动 Qwen3.5-9B 服务：
+1. 在 GPU 服务器上使用 vLLM Docker 启动 Qwen3.5-9B 服务：
 
 ```bash
-# 使用 vLLM 启动服务
+# 创建配置文件并启动 Docker 容器
 # 服务默认运行在 http://192.168.199.107:8000
+# 配置中包含 reasoning-parser: "qwen3" 以支持思考模式
 ```
 
-2. 在前端 `.env` 文件中配置服务器地址（如需要）
+2. 在前端 `.env` 文件中配置服务器地址和认证信息
 
 ```env
 VITE_QWEN35_API_URL=http://192.168.199.107:8000
+VITE_QWEN35_API_KEY=your-api-key-here
+VITE_QWEN35_MODEL_NAME=DGX-Qwen3.5-9B
 ```
 
 3. 使用说明：
    - 选择 **Qwen3.5-9B** 模型
    - 输入你的问题或对话内容
+   - 模型会自动启用思考模式，先展示思考过程（紫色区域），再给出最终回答
    - 可以在左侧设置面板调整参数：
      - 温度
      - 最大 Token 数
    - 点击发送开始对话
    - 生成过程中可以点击"停止"按钮随时中断
 
+**思考模式：**
+- Qwen3.5-9B 默认启用思考模式（通过 `chat_template_kwargs: { enable_thinking: true }`）
+- 思考过程会以紫色左边框区域展示，与 DeepSeek V4 Flash 思考模式展示方式一致
+- 后端使用 `reasoning-parser: "qwen3"` 解析思考内容，通过 `delta.reasoning` 字段返回
+
 **API 格式：**
-Qwen3.5-9B 使用 OpenAI 兼容的聊天完成 API 格式。
+Qwen3.5-9B 使用 OpenAI 兼容的聊天完成 API 格式（`/v1/chat/completions`），支持流式响应。
 
 **注意事项：**
-- 后端返回 OpenAI 兼容格式的响应
+- 需要配置 API Key 进行鉴权
+- served-model-name 为 `DGX-Qwen3.5-9B`
+- 后端返回 OpenAI 兼容格式的 SSE 流式响应
+- 思考内容通过 `reasoning` 字段返回（区别于 DeepSeek 的 `reasoning_content`）
 - 前端通过 Vite 代理解决 CORS 跨域问题
 
 ### 历史查询
@@ -590,80 +622,410 @@ Qwen3.5-9B 使用 OpenAI 兼容的聊天完成 API 格式。
 
 ## API 接口
 
-### FLUX 后端
+前端通过 Vite 代理解决 CORS 跨域问题，所有本地后端服务通过 `/xxx-api` 前缀代理到对应的服务器地址。
 
-#### 生成图片
+### 1. SenseNova 6.7 Flash-Lite / DeepSeek V4 Flash / Qwen3.5-9B — 文本对话
+
+**通用聊天接口（SSE 流式响应）**
 
 ```http
-POST /generate
+POST {apiUrl}/v1/chat/completions
+Content-Type: application/json
+Authorization: Bearer {apiKey}
+
+{
+  "model": "sensenova-6.7-flash-lite" | "deepseek-v4-flash" | "DGX-Qwen3.5-9B",
+  "messages": [
+    { "role": "user", "content": "你好" }
+  ],
+  "stream": true,
+  "temperature": 0.7,
+  "max_tokens": 4096
+}
+```
+
+**模型差异：**
+
+| 参数 | SenseNova 6.7 | DeepSeek V4 Flash | Qwen3.5-9B |
+|------|--------------|-------------------|------------|
+| API 地址 | `https://token.sensenova.cn/v1` | `https://token.sensenova.cn/v1` | `/qwen35-api`（代理到 `192.168.199.107:8000`）|
+| 认证 | SenseNova API Key | SenseNova API Key | Qwen3.5 API Key |
+| 思考模式 | 不支持 | `thinking: { type: "enabled", reasoning_effort: "high" }` | `chat_template_kwargs: { enable_thinking: true }` |
+| 思考字段 | — | `delta.reasoning_content` | `delta.reasoning` |
+
+**SSE 响应格式：**
+
+```
+data: {"choices":[{"delta":{"content":"你"}}]}
+data: {"choices":[{"delta":{"content":"好"}}]}
+data: {"choices":[{"delta":{"reasoning_content":"思考中..."}}]}  // DeepSeek
+data: {"choices":[{"delta":{"reasoning":"思考中..."}}]}          // Qwen3.5
+data: [DONE]
+```
+
+### 2. SenseNova U1 Fast — 在线文生图
+
+```http
+POST https://token.sensenova.cn/v1/images/generations
+Content-Type: application/json
+Authorization: Bearer {apiKey}
+
+{
+  "model": "sensenova-u1-fast",
+  "prompt": "一只可爱的猫咪",
+  "size": "1024x1024",
+  "n": 1
+}
+```
+
+**响应：**
+
+```json
+{
+  "data": [{ "url": "https://..." }]
+}
+```
+
+### 3. FLUX.2 Klein 9B — 本地文生图 / 图像编辑
+
+**文生图：**
+
+```http
+POST http://192.168.199.107:8787/generate
 Content-Type: application/json
 
 {
-  "prompt": "A cat holding a sign that says hello world",
-  "height": 1024,
+  "prompt": "A cat holding a sign",
   "width": 1024,
-  "guidance_scale": 1.0,
+  "height": 1024,
   "num_inference_steps": 4,
+  "guidance_scale": 1.0,
   "seed": 42
 }
 ```
 
-#### 编辑图片
+**上传图片：**
 
 ```http
-POST /edit
+POST http://192.168.199.107:8787/upload-images
+Content-Type: multipart/form-data
+
+files: 多个图片文件
+```
+
+**图像编辑：**
+
+```http
+POST http://192.168.199.107:8787/edit
 Content-Type: application/json
 
 {
   "prompt": "Make it look like sunset",
   "image_paths": ["/uploads/image_123.png"],
-  "height": 1024,
   "width": 1024,
-  "strength": 0.8
+  "height": 1024,
+  "num_inference_steps": 4,
+  "guidance_scale": 1.0,
+  "strength": 0.8,
+  "seed": 42
 }
 ```
 
-### 
+### 4. JoyAI 图像编辑 — 文生图 / 图像编辑 / 图像理解 / 空间变换
 
-### Qwen-Image-Edit-2511 后端
-
-#### 编辑图片
+**文生图：**
 
 ```http
-POST /edit_image
+POST http://192.168.199.107:8788/joyai/text-to-image
+Content-Type: application/json
+
+{
+  "prompt": "一只可爱的猫咪",
+  "negative_prompt": "",
+  "steps": 30,
+  "guidance_scale": 7.5,
+  "height": 1024,
+  "width": 1024,
+  "seed": 42
+}
+```
+
+**上传图片：**
+
+```http
+POST http://192.168.199.107:8788/joyai/upload-images
 Content-Type: multipart/form-data
 
-Parameters:
-  files: multiple image files (支持多图片上传)
-  file: single image file (向后兼容，支持单图片上传)
-  prompt: text prompt
-  num_inference_steps: optional, default 40
-  guidance_scale: optional, default 1.0
-  true_cfg_scale: optional, default 4.0
-  seed: optional, default 0
-
-Example curl (多图片上传):
-curl -X POST http://192.168.199.107:5000/edit_image \
-  -F "files=@image1.png" \
-  -F "files=@image2.png" \
-  -F "prompt=generate a christmas theme"
-
-Example curl (单图片上传，向后兼容):
-curl -X POST http://192.168.199.107:5000/edit_image \
-  -F "file=@image.png" \
-  -F "prompt=generate a christmas theme"
+files: 多个图片文件
 ```
 
-#### 获取生成的图片
+**图像编辑：**
 
 ```http
-GET /outputs/{filename}
+POST http://192.168.199.107:8788/joyai/edit-image
+Content-Type: application/json
+
+{
+  "prompt": "把背景换成海滩",
+  "image_path": "/joyai/uploads/image_123.png",
+  "negative_prompt": "",
+  "steps": 30,
+  "guidance_scale": 7.5,
+  "seed": 42
+}
 ```
 
-#### 健康检查
+**图像理解：**
 
 ```http
-GET /health
+POST http://192.168.199.107:8788/joyai/understand-image
+Content-Type: application/json
+
+{
+  "image_path": "/joyai/uploads/image_123.png",
+  "image_paths": ["/joyai/uploads/img1.png", "/joyai/uploads/img2.png"],
+  "question": "描述这张图片",
+  "max_new_tokens": 2048,
+  "temperature": 0.7,
+  "top_p": 0.8,
+  "top_k": 50
+}
+```
+
+**空间变换：**
+
+```http
+POST http://192.168.199.107:8788/joyai/spatial-transform
+Content-Type: application/json
+
+{
+  "image_path": "/joyai/uploads/image_123.png",
+  "operation_type": "move",
+  "prompt": "把猫移到右边",
+  "steps": 30,
+  "guidance_scale": 7.5,
+  "seed": 42
+}
+```
+
+### 5. HiDream-O1-Image — 文生图 / 图像编辑 / 主体驱动（SSE 两步架构）
+
+**启动生成任务：**
+
+```http
+POST /api/generate/start
+Content-Type: application/json
+
+{
+  "prompt": "一只可爱的猫咪",
+  "mode": "t2i" | "edit" | "subject",
+  "width": 2048,
+  "height": 2048,
+  "seed": 32,
+  "refs_b64": ["base64编码的图片..."],
+  "keep_original_aspect": false,
+  "editing_scheduler": "flow_match" | "flash"
+}
+```
+
+**响应：**
+
+```json
+{ "job_id": "xxx" }
+```
+
+**SSE 流式获取结果：**
+
+```http
+GET /api/generate/stream/{job_id}
+Accept: text/event-stream
+```
+
+**SSE 事件：**
+
+```
+data: {"type": "progress", "step": 5, "total": 50}
+data: {"type": "done", "image": "base64编码的图片"}
+data: {"type": "error", "message": "错误信息"}
+```
+
+### 6. ERNIE-Image — 文生图
+
+```http
+POST /ernie-api/v1/images/generations
+Content-Type: application/json
+
+{
+  "prompt": "一只可爱的猫咪",
+  "width": 848,
+  "height": 1264,
+  "num_inference_steps": 50,
+  "guidance_scale": 4.0,
+  "use_pe": true
+}
+```
+
+**响应：** JSON 格式或直接返回图片二进制数据。
+
+### 7. Qwen-Image-Edit-2511 — 图像编辑
+
+```http
+POST /qwen-api/edit_image
+Content-Type: multipart/form-data
+
+files: 多个图片文件
+prompt: 编辑提示词
+num_inference_steps: 推理步数（默认 40）
+guidance_scale: 引导强度（默认 1.0）
+true_cfg_scale: True CFG 强度（默认 4.0）
+seed: 随机种子（默认 0）
+```
+
+**响应：**
+
+```json
+{
+  "output_urls": ["/outputs/result_123.png"]
+}
+```
+
+**获取生成的图片：**
+
+```http
+GET /qwen-images/outputs/{filename}
+```
+
+### 8. FireRed-Image-Edit — 图像编辑
+
+```http
+POST /firered-api/v1/chat/completions
+Content-Type: application/json
+
+{
+  "messages": [{
+    "role": "user",
+    "content": [
+      { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } },
+      { "type": "text", "text": "把背景换成蓝色" }
+    ]
+  }],
+  "extra_body": {
+    "num_inference_steps": 50,
+    "cfg_scale": 1.0,
+    "seed": 42,
+    "layers": 4,
+    "resolution": 640
+  }
+}
+```
+
+**响应：**
+
+```json
+{
+  "choices": [{
+    "message": {
+      "content": [
+        { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } }
+      ]
+    }
+  }]
+}
+```
+
+### 9. SenseNova-U1-8B-MoT — 文生图 / 图像编辑
+
+**文生图：**
+
+```http
+POST /sensenova-u1-api/v1/chat/completions
+Content-Type: application/json
+
+{
+  "messages": [{
+    "role": "user",
+    "content": [{ "type": "text", "text": "一只可爱的猫咪" }]
+  }],
+  "extra_body": {
+    "num_inference_steps": 50,
+    "cfg_scale": 1.0,
+    "seed": 42,
+    "layers": 4,
+    "resolution": 1024
+  }
+}
+```
+
+**图像编辑：**
+
+```http
+POST /sensenova-u1-api/v1/chat/completions
+Content-Type: application/json
+
+{
+  "messages": [{
+    "role": "user",
+    "content": [
+      { "type": "image_url", "image_url": { "url": "data:image/png;base64,..." } },
+      { "type": "text", "text": "把背景换成蓝色" }
+    ]
+  }],
+  "extra_body": {
+    "num_inference_steps": 50,
+    "cfg_scale": 1.0,
+    "seed": 42,
+    "layers": 4,
+    "resolution": 640
+  }
+}
+```
+
+**响应格式与 FireRed 相同，返回 `choices[0].message.content` 中的 `image_url`。**
+
+### 10. 历史记录服务
+
+**保存记录：**
+
+```http
+POST /api/history/save
+Content-Type: application/json
+
+{
+  "model": "flux-klein",
+  "generate_type": "text-to-image",
+  "prompt": "一只可爱的猫咪",
+  "request_images": [],
+  "response_result": "success",
+  "response_images": ["data:image/png;base64,..."],
+  "request_time": "2026-01-01T00:00:00.000Z",
+  "response_time": "2026-01-01T00:00:05.000Z",
+  "duration_ms": 5000
+}
+```
+
+**查询记录：**
+
+```http
+GET /api/history/query?model=flux-klein&generate_type=text-to-image&limit=20&offset=0
+```
+
+**获取单条记录：**
+
+```http
+GET /api/history/{id}
+```
+
+**删除记录：**
+
+```http
+DELETE /api/history/{id}
+```
+
+**获取模型列表 / 生成类型列表：**
+
+```http
+GET /api/models
+GET /api/generate-types
 ```
 
 ## 注意事项
