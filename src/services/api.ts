@@ -1,29 +1,13 @@
 import { ModelType, Message, ContentBlock } from '../types';
+import { useStore } from '../store';
 
 const BASE_URL = 'https://token.sensenova.cn/v1';
-const FLUX_API_URL = import.meta.env.VITE_FLUX_API_URL || 'http://192.168.199.107:8787';
-const JOYAI_API_URL = import.meta.env.VITE_JOYAI_API_URL || 'http://192.168.199.107:8788';
-// 使用 Vite 代理来避免 CORS 问题
-const ERNIE_API_URL = '/ernie-api';
-// 用于生产环境的完整 URL
-const ERNIE_API_URL_FULL = import.meta.env.VITE_ERNIE_API_URL || 'http://192.168.199.107:30000';
-// Qwen-Image-Edit API (开发环境使用代理
-const QWEN_API_URL = '/qwen-api';
-// 用于生产环境的完整 URL
-const QWEN_API_URL_FULL = import.meta.env.VITE_QWEN_API_URL || 'http://192.168.199.107:5000';
-// FireRed-Image-Edit API (开发环境使用代理
-const FIRERED_API_URL = '/firered-api';
-// 用于生产环境的完整 URL
-const FIRERED_API_URL_FULL = import.meta.env.VITE_FIRERED_API_URL || 'http://192.168.199.107:8091';
-// SenseNova-U1-8B-MoT API (开发环境使用代理
-const SENSENOVA_U1_API_URL = '/sensenova-u1-api';
-// 用于生产环境的完整 URL
-const SENSENOVA_U1_API_URL_FULL = import.meta.env.VITE_SENSENOVA_U1_API_URL || 'http://192.168.199.107:8092';
-// Qwen3.5-9B API (开发环境使用代理
-const QWEN35_API_URL = '/qwen35-api';
-// 用于生产环境的完整 URL
-const QWEN35_API_URL_FULL = import.meta.env.VITE_QWEN35_API_URL || 'http://192.168.199.107:8000';
-const QWEN35_API_KEY = import.meta.env.VITE_QWEN35_API_KEY || 'sk-pLpCvK8NRc30yx8KrT6DKbxEo85webUfxHZQe8ardv61sxB4';
+
+function getServerUrl(key: string, envFallback: string, defaultUrl: string): string {
+  const config = useStore.getState().config as any;
+  return config[key] || import.meta.env[envFallback] || defaultUrl;
+}
+
 const QWEN35_MODEL_NAME = import.meta.env.VITE_QWEN35_MODEL_NAME || 'DGX-Qwen3.5-9B';
 
 interface SendMessageParams {
@@ -93,10 +77,13 @@ export async function sendChatMessage({
     };
 
     if (model === 'qwen3.5-9b') {
-      apiUrl = `${QWEN35_API_URL}/v1/chat/completions`;
+      const qwen35Url = getServerUrl('qwen35ServerUrl', 'VITE_QWEN35_API_URL', 'http://192.168.199.107:8000');
+      const config = useStore.getState().config;
+      const qwen35Key = config.qwen35ApiKey || import.meta.env.VITE_QWEN35_API_KEY || '';
+      apiUrl = `${qwen35Url}/v1/chat/completions`;
       requestBody.model = QWEN35_MODEL_NAME;
       requestBody.chat_template_kwargs = { enable_thinking: true };
-      headers.Authorization = `Bearer ${QWEN35_API_KEY}`;
+      headers.Authorization = `Bearer ${qwen35Key}`;
     } else {
       headers.Authorization = `Bearer ${apiKey}`;
     }
@@ -191,6 +178,7 @@ export async function generateFluxKlein({
   signal,
 }: GenerateFluxKleinParams): Promise<void> {
   try {
+    const FLUX_API_URL = getServerUrl('fluxServerUrl', 'VITE_FLUX_API_URL', 'http://192.168.199.107:8787');
     const response = await fetch(`${FLUX_API_URL}/generate`, {
       method: 'POST',
       headers: {
@@ -234,6 +222,7 @@ export async function uploadImages({
   signal,
 }: UploadImagesParams): Promise<void> {
   try {
+    const FLUX_API_URL = getServerUrl('fluxServerUrl', 'VITE_FLUX_API_URL', 'http://192.168.199.107:8787');
     const formData = new FormData();
     files.forEach(file => formData.append('files', file));
 
@@ -284,7 +273,7 @@ export async function editFluxKlein({
   signal,
 }: EditFluxKleinParams): Promise<void> {
   try {
-    // Convert image paths to relative paths
+    const FLUX_API_URL = getServerUrl('fluxServerUrl', 'VITE_FLUX_API_URL', 'http://192.168.199.107:8787');
     const relativePaths = imagePaths.map(path => path.replace(FLUX_API_URL, ''));
     
     const response = await fetch(`${FLUX_API_URL}/edit`, {
@@ -396,6 +385,7 @@ export async function joyAITextToImage({
   signal,
 }: JoyAITextToImageParams): Promise<void> {
   try {
+    const JOYAI_API_URL = getServerUrl('joyaiServerUrl', 'VITE_JOYAI_API_URL', 'http://192.168.199.107:8788');
     const response = await fetch(`${JOYAI_API_URL}/joyai/text-to-image`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -448,6 +438,7 @@ export async function joyAIEditImage({
   signal,
 }: JoyAIEditImageParams): Promise<void> {
   try {
+    const JOYAI_API_URL = getServerUrl('joyaiServerUrl', 'VITE_JOYAI_API_URL', 'http://192.168.199.107:8788');
     const relativePath = imagePath.replace(JOYAI_API_URL, '');
     const response = await fetch(`${JOYAI_API_URL}/joyai/edit-image`, {
       method: 'POST',
@@ -502,6 +493,7 @@ export async function joyAIUnderstandImage({
   signal,
 }: JoyAIUnderstandImageParams): Promise<void> {
   try {
+    const JOYAI_API_URL = getServerUrl('joyaiServerUrl', 'VITE_JOYAI_API_URL', 'http://192.168.199.107:8788');
     const requestBody: any = {
       question,
       max_new_tokens: maxNewTokens,
@@ -559,6 +551,7 @@ export async function joyAISpatialTransform({
   signal,
 }: JoyAISpatialTransformParams): Promise<void> {
   try {
+    const JOYAI_API_URL = getServerUrl('joyaiServerUrl', 'VITE_JOYAI_API_URL', 'http://192.168.199.107:8788');
     const relativePath = imagePath.replace(JOYAI_API_URL, '');
     const response = await fetch(`${JOYAI_API_URL}/joyai/spatial-transform`, {
       method: 'POST',
@@ -601,6 +594,7 @@ export async function joyAIUploadImages({
   signal,
 }: JoyAIUploadImagesParams): Promise<void> {
   try {
+    const JOYAI_API_URL = getServerUrl('joyaiServerUrl', 'VITE_JOYAI_API_URL', 'http://192.168.199.107:8788');
     const formData = new FormData();
     files.forEach(file => formData.append('files', file));
 
@@ -671,7 +665,8 @@ export function hiDreamGenerate({
 }: HiDreamGenerateParams): Promise<string> {
   return new Promise(async (resolve, reject) => {
     try {
-      // Check if signal is already aborted
+      const HIDREAM_API_URL = getServerUrl('hidreamServerUrl', 'VITE_HIDREAM_API_URL', 'http://192.168.199.107:7860');
+
       if (signal?.aborted) {
         reject(new Error('请求已取消'));
         return;
@@ -685,7 +680,7 @@ export function hiDreamGenerate({
 
       console.log(`[HiDream] mode=${mode}, prompt="${prompt}", refs=${refsB64.length}`);
 
-      const startResponse = await fetch('/api/generate/start', {
+      const startResponse = await fetch(`${HIDREAM_API_URL}/api/generate/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -716,7 +711,7 @@ export function hiDreamGenerate({
       const jobId = startData.job_id;
       console.log('[HiDream] job_id:', jobId);
 
-      const eventSource = new EventSource(`/api/generate/stream/${jobId}`);
+      const eventSource = new EventSource(`${HIDREAM_API_URL}/api/generate/stream/${jobId}`);
       
       // Handle abort for EventSource
       const handleAbort = () => {
@@ -826,6 +821,7 @@ export async function ernieTextToImage({
   signal,
 }: ErnieTextToImageParams): Promise<void> {
   try {
+    const ERNIE_API_URL = getServerUrl('ernieServerUrl', 'VITE_ERNIE_API_URL', 'http://192.168.199.107:30000');
     console.log('ERNIE-Image 调用参数:', {
       url: `${ERNIE_API_URL}/v1/images/generations`,
       prompt,
@@ -940,6 +936,7 @@ export async function qwenEditImage({
   signal,
 }: QwenEditImageParams): Promise<void> {
   try {
+    const QWEN_API_URL = getServerUrl('qwenServerUrl', 'VITE_QWEN_API_URL', 'http://192.168.199.107:5000');
     const formData = new FormData();
     images.forEach((image) => {
       formData.append('files', image);
@@ -1010,7 +1007,7 @@ export async function fireRedEditImage({
   signal,
 }: FireRedEditImageParams): Promise<void> {
   try {
-    // 将文件转换为 base64
+    const FIRERED_API_URL = getServerUrl('fireredServerUrl', 'VITE_FIRERED_API_URL', 'http://192.168.199.107:8091');
     const imagesBase64: string[] = [];
     for (const image of images) {
       const reader = new FileReader();
@@ -1128,7 +1125,7 @@ export async function senseNovaU1TextToImage({
   signal,
 }: SenseNovaU1TextToImageParams): Promise<void> {
   try {
-    // 构建请求体 - 按照 vllm-omni 文生图格式
+    const SENSENOVA_U1_API_URL = getServerUrl('sensenovaU1ServerUrl', 'VITE_SENSENOVA_U1_API_URL', 'http://192.168.199.107:8092');
     const requestBody = {
       messages: [{ 
         role: 'user', 
@@ -1194,7 +1191,7 @@ export async function senseNovaU1EditImage({
   signal,
 }: SenseNovaU1EditImageParams): Promise<void> {
   try {
-    // 将文件转换为 base64
+    const SENSENOVA_U1_API_URL = getServerUrl('sensenovaU1ServerUrl', 'VITE_SENSENOVA_U1_API_URL', 'http://192.168.199.107:8092');
     const imagesBase64: string[] = [];
     for (const image of images) {
       const reader = new FileReader();

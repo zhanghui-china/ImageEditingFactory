@@ -78,6 +78,15 @@ export interface ModelConfig {
   sensenovaU1Mode: 'text-to-image' | 'edit-image';
   sensenovaU1Width: number;
   sensenovaU1Height: number;
+  qwen35ServerUrl: string;
+  qwen35ApiKey: string;
+  fluxServerUrl: string;
+  joyaiServerUrl: string;
+  hidreamServerUrl: string;
+  ernieServerUrl: string;
+  qwenServerUrl: string;
+  fireredServerUrl: string;
+  sensenovaU1ServerUrl: string;
 }
 
 export interface ContentBlock {

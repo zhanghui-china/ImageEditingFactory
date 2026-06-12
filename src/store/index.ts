@@ -85,6 +85,15 @@ const defaultConfig: ModelConfig = {
   sensenovaU1Mode: 'text-to-image',
   sensenovaU1Width: 1024,
   sensenovaU1Height: 1024,
+  qwen35ServerUrl: 'http://192.168.199.107:8000',
+  qwen35ApiKey: '',
+  fluxServerUrl: 'http://192.168.199.107:8787',
+  joyaiServerUrl: 'http://192.168.199.107:8788',
+  hidreamServerUrl: 'http://192.168.199.107:7860',
+  ernieServerUrl: 'http://192.168.199.107:30000',
+  qwenServerUrl: 'http://192.168.199.107:5000',
+  fireredServerUrl: 'http://192.168.199.107:8091',
+  sensenovaU1ServerUrl: 'http://192.168.199.107:8092',
 };
 
 // 清理 localStorage 中的旧数据，避免空间溢出

@@ -1,4 +1,4 @@
-import { Settings, Thermometer, Maximize2, Brain, Image, ImagePlus, Trash2, Sliders, Move, RotateCw, ZoomIn, ArrowLeftRight, ArrowUpDown, Layers, ChevronUp, ChevronDown } from 'lucide-react';
+import { Settings, Thermometer, Maximize2, Brain, Image, ImagePlus, Trash2, Sliders, Move, RotateCw, ZoomIn, ArrowLeftRight, ArrowUpDown, Layers, ChevronUp, ChevronDown, Server } from 'lucide-react';
 import { useState } from 'react';
 import { useStore } from '../store';
 
@@ -23,6 +23,7 @@ export default function SettingsPanel() {
   const [isExpanded, setIsExpanded] = useState(true);
 
   const isDeepSeek = currentModel === 'deepseek-v4-flash';
+  const isQwen35 = currentModel === 'qwen3.5-9b';
   const isU1Fast = currentModel === 'sensenova-u1-fast';
   const isFluxKlein = currentModel === 'flux-klein';
   const isJoyAI = currentModel === 'joyai-image-edit';
@@ -53,6 +54,37 @@ export default function SettingsPanel() {
 
         {!isU1Fast && !isFluxKlein && !isJoyAI && (
           <>
+            {isQwen35 && (
+              <>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Server size={14} className="text-orange-500" />
+                  <label className="text-xs text-text-secondary">服务器地址</label>
+                </div>
+                <input
+                  type="text"
+                  value={config.qwen35ServerUrl}
+                  onChange={(e) => updateConfig({ qwen35ServerUrl: e.target.value })}
+                  className="w-full bg-deep-bg border border-card-bg rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-orange-500"
+                  placeholder="http://192.168.199.107:8000"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Settings size={14} className="text-orange-500" />
+                  <label className="text-xs text-text-secondary">API Key</label>
+                </div>
+                <input
+                  type="password"
+                  value={config.qwen35ApiKey}
+                  onChange={(e) => updateConfig({ qwen35ApiKey: e.target.value })}
+                  className="w-full bg-deep-bg border border-card-bg rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-orange-500"
+                  placeholder="sk-..."
+                />
+              </div>
+              </>
+            )}
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Thermometer size={14} className="text-text-muted" />
@@ -213,6 +245,20 @@ export default function SettingsPanel() {
 
         {isFluxKlein && (
           <>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Server size={14} className="text-emerald-400" />
+                <label className="text-xs text-text-secondary">服务器地址</label>
+              </div>
+              <input
+                type="text"
+                value={config.fluxServerUrl}
+                onChange={(e) => updateConfig({ fluxServerUrl: e.target.value })}
+                className="w-full bg-deep-bg border border-card-bg rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                placeholder="http://192.168.199.107:8787"
+              />
+            </div>
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Sliders size={14} className="text-emerald-400" />
@@ -307,6 +353,20 @@ export default function SettingsPanel() {
 
         {isJoyAI && (
           <>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Server size={14} className="text-pink-400" />
+                <label className="text-xs text-text-secondary">服务器地址</label>
+              </div>
+              <input
+                type="text"
+                value={config.joyaiServerUrl}
+                onChange={(e) => updateConfig({ joyaiServerUrl: e.target.value })}
+                className="w-full bg-deep-bg border border-card-bg rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-pink-400"
+                placeholder="http://192.168.199.107:8788"
+              />
+            </div>
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Sliders size={14} className="text-pink-400" />
@@ -538,6 +598,20 @@ export default function SettingsPanel() {
 
         {isHiDream && (
           <>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Server size={14} className="text-cyan-400" />
+                <label className="text-xs text-text-secondary">服务器地址</label>
+              </div>
+              <input
+                type="text"
+                value={config.hidreamServerUrl}
+                onChange={(e) => updateConfig({ hidreamServerUrl: e.target.value })}
+                className="w-full bg-deep-bg border border-card-bg rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                placeholder="http://192.168.199.107:7860"
+              />
+            </div>
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Layers size={14} className="text-cyan-400" />
@@ -675,6 +749,20 @@ export default function SettingsPanel() {
 
         {isErnieImage && (
           <>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Server size={14} className="text-yellow-400" />
+                <label className="text-xs text-text-secondary">服务器地址</label>
+              </div>
+              <input
+                type="text"
+                value={config.ernieServerUrl}
+                onChange={(e) => updateConfig({ ernieServerUrl: e.target.value })}
+                className="w-full bg-deep-bg border border-card-bg rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                placeholder="http://192.168.199.107:30000"
+              />
+            </div>
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Sliders size={14} className="text-yellow-400" />
@@ -765,6 +853,20 @@ export default function SettingsPanel() {
 
         {isQwenImageEdit && (
           <>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Server size={14} className="text-orange-400" />
+                <label className="text-xs text-text-secondary">服务器地址</label>
+              </div>
+              <input
+                type="text"
+                value={config.qwenServerUrl}
+                onChange={(e) => updateConfig({ qwenServerUrl: e.target.value })}
+                className="w-full bg-deep-bg border border-card-bg rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-orange-400"
+                placeholder="http://192.168.199.107:5000"
+              />
+            </div>
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Sliders size={14} className="text-orange-400" />
@@ -837,6 +939,20 @@ export default function SettingsPanel() {
 
         {isFireRedImageEdit && (
           <>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Server size={14} className="text-red-400" />
+                <label className="text-xs text-text-secondary">服务器地址</label>
+              </div>
+              <input
+                type="text"
+                value={config.fireredServerUrl}
+                onChange={(e) => updateConfig({ fireredServerUrl: e.target.value })}
+                className="w-full bg-deep-bg border border-card-bg rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-red-400"
+                placeholder="http://192.168.199.107:8091"
+              />
+            </div>
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Sliders size={14} className="text-red-400" />
@@ -892,6 +1008,20 @@ export default function SettingsPanel() {
 
         {isSenseNovaU1 && (
           <>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Server size={14} className="text-blue-400" />
+                <label className="text-xs text-text-secondary">服务器地址</label>
+              </div>
+              <input
+                type="text"
+                value={config.sensenovaU1ServerUrl}
+                onChange={(e) => updateConfig({ sensenovaU1ServerUrl: e.target.value })}
+                className="w-full bg-deep-bg border border-card-bg rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-blue-400"
+                placeholder="http://192.168.199.107:8092"
+              />
+            </div>
+
             {config.sensenovaU1Mode === 'text-to-image' && (
               <>
                 <div className="space-y-2">
