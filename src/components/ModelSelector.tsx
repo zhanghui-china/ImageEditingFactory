@@ -81,8 +81,8 @@ const models: ModelInfo[] = [
     name: 'Qwen-Image-Edit-2511',
     icon: ImagePlus,
     color: 'text-orange-400',
-    description: '通义千问图像编辑模型',
-    features: ['本地 GPU 推理', '图像编辑', '文生图', '高质量输出'],
+    description: '通义千问图像编辑模型 (vLLM-omni)',
+    features: ['本地 GPU 推理', '图像编辑', '文生图', '高质量输出', 'vLLM-omni'],
   },
   {
     id: 'firered-image-edit',

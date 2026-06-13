@@ -219,13 +219,13 @@ export default function HistoryPanel({ onBack }: HistoryPanelProps) {
                       {formatDuration(record.duration_ms)}
                     </span>
                     <button
-                      onClick={() => handleDelete(record.id)}
+                      onClick={() => record.id && handleDelete(record.id)}
                       className="p-1 hover:bg-card-bg rounded text-text-muted hover:text-error-red transition-colors"
                     >
                       <Trash2 size={14} />
                     </button>
                     <button
-                      onClick={() => setExpandedRecord(expandedRecord === record.id ? null : record.id)}
+                      onClick={() => setExpandedRecord(expandedRecord === record.id ? null : record.id!)}
                       className="p-1 hover:bg-card-bg rounded text-text-muted hover:text-text-secondary transition-colors"
                     >
                       {expandedRecord === record.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -247,28 +247,14 @@ export default function HistoryPanel({ onBack }: HistoryPanelProps) {
                       <div className="text-xs text-text-muted mb-1">请求图片</div>
                       <div className="flex gap-2 overflow-x-auto">
                         {record.request_images.map((img, idx) => {
-                          // 判断图片 URL 类型
-                          const isHttpUrl = img.startsWith('http://') || img.startsWith('https://');
-                          const isDataUrl = img.startsWith('data:');
-                          const src = isHttpUrl || isDataUrl || img.startsWith('/') 
-                            ? img 
-                            : `/api/history/images/${img}`;
                           const allImages = [
-                            ...record.request_images.map(i => {
-                              const isHttp = i.startsWith('http://') || i.startsWith('https://');
-                              const isData = i.startsWith('data:');
-                              return isHttp || isData || i.startsWith('/') ? i : `/api/history/images/${i}`;
-                            }),
-                            ...record.response_images.map(i => {
-                              const isHttp = i.startsWith('http://') || i.startsWith('https://');
-                              const isData = i.startsWith('data:');
-                              return isHttp || isData || i.startsWith('/') ? i : `/api/history/images/${i}`;
-                            })
+                            ...record.request_images,
+                            ...record.response_images,
                           ];
                           return (
                             <img
                               key={idx}
-                              src={src}
+                              src={img}
                               alt={`Request ${idx}`}
                               className="w-24 h-24 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
                               onClick={() => {
@@ -297,28 +283,14 @@ export default function HistoryPanel({ onBack }: HistoryPanelProps) {
                       <div className="text-xs text-text-muted mb-1">响应图片</div>
                       <div className="flex gap-2 overflow-x-auto">
                         {record.response_images.map((img, idx) => {
-                          // 判断图片 URL 类型
-                          const isHttpUrl = img.startsWith('http://') || img.startsWith('https://');
-                          const isDataUrl = img.startsWith('data:');
-                          const src = isHttpUrl || isDataUrl || img.startsWith('/') 
-                            ? img 
-                            : `/api/history/images/${img}`;
                           const allImages = [
-                            ...record.request_images.map(i => {
-                              const isHttp = i.startsWith('http://') || i.startsWith('https://');
-                              const isData = i.startsWith('data:');
-                              return isHttp || isData || i.startsWith('/') ? i : `/api/history/images/${i}`;
-                            }),
-                            ...record.response_images.map(i => {
-                              const isHttp = i.startsWith('http://') || i.startsWith('https://');
-                              const isData = i.startsWith('data:');
-                              return isHttp || isData || i.startsWith('/') ? i : `/api/history/images/${i}`;
-                            })
+                            ...record.request_images,
+                            ...record.response_images,
                           ];
                           return (
                             <img
                               key={idx}
-                              src={src}
+                              src={img}
                               alt={`Response ${idx}`}
                               className="w-24 h-24 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
                               onClick={() => {

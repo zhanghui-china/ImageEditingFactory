@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { ModelType, Message, ModelConfig } from '../types';
+import { saveConfig, getConfig } from '../services/db';
 
 interface MessagesByModel {
   [key: string]: Message[];
@@ -18,6 +18,7 @@ interface AppState {
   streamingContent: string;
   fluxMode: FluxMode;
   abortController: AbortController | null;
+  _hydrated: boolean;
   getApiKey: () => string;
   setApiKey: (key: string) => void;
   setCurrentModel: (model: ModelType) => void;
@@ -92,29 +93,73 @@ const defaultConfig: ModelConfig = {
   hidreamServerUrl: 'http://192.168.199.107:7860',
   ernieServerUrl: 'http://192.168.199.107:30000',
   qwenServerUrl: 'http://192.168.199.107:5000',
+  qwenApiKey: '',
   fireredServerUrl: 'http://192.168.199.107:8091',
+  fireredApiKey: '',
   sensenovaU1ServerUrl: 'http://192.168.199.107:8092',
 };
 
-// 清理 localStorage 中的旧数据，避免空间溢出
-try {
-  const storage = localStorage.getItem('sensenova-storage');
-  if (storage) {
+function migrateFromLocalStorage(): Partial<AppState> | null {
+  try {
+    const storage = localStorage.getItem('sensenova-storage');
+    if (!storage) return null;
+
     const parsed = JSON.parse(storage);
-    if (parsed.state?.messagesByModel) {
-      // 删除消息历史
-      delete parsed.state.messagesByModel;
-      localStorage.setItem('sensenova-storage', JSON.stringify(parsed));
-    }
+    const state = parsed.state;
+    if (!state) return null;
+
+    const migrated: Partial<AppState> = {};
+    if (state.apiKey !== undefined) migrated.apiKey = state.apiKey;
+    if (state.currentModel !== undefined) migrated.currentModel = state.currentModel;
+    if (state.config !== undefined) migrated.config = { ...defaultConfig, ...state.config };
+    if (state.fluxMode !== undefined) migrated.fluxMode = state.fluxMode;
+
+    localStorage.removeItem('sensenova-storage');
+    return migrated;
+  } catch (e) {
+    localStorage.removeItem('sensenova-storage');
+    return null;
   }
-} catch (e) {
-  // 如果出错，清空整个 storage
-  localStorage.removeItem('sensenova-storage');
+}
+
+const persistedKeys: (keyof AppState)[] = ['apiKey', 'currentModel', 'config', 'fluxMode'];
+
+function getPersistedState(state: AppState) {
+  const result: Record<string, any> = {};
+  for (const key of persistedKeys) {
+    result[key] = state[key];
+  }
+  return result;
+}
+
+async function saveToIndexedDB(state: AppState) {
+  try {
+    const data = getPersistedState(state);
+    for (const [key, value] of Object.entries(data)) {
+      await saveConfig(key, value);
+    }
+  } catch (e) {
+    console.error('Failed to save config to IndexedDB:', e);
+  }
 }
 
 export const useStore = create<AppState>()(
-  persist(
-    (set, get) => ({
+  (set, get) => {
+    let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const debouncedSave = () => {
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        saveToIndexedDB(get());
+      }, 300);
+    };
+
+    const triggerPersist = (partial: Partial<AppState>) => {
+      set(partial);
+      debouncedSave();
+    };
+
+    return {
       apiKey: '',
       currentModel: 'sensenova-6.7-flash-lite',
       messagesByModel: {},
@@ -124,6 +169,7 @@ export const useStore = create<AppState>()(
       streamingContent: '',
       fluxMode: 'text-to-image',
       abortController: null,
+      _hydrated: false,
 
       getApiKey: () => {
         const envKey = import.meta.env.VITE_SENSENOVA_API_KEY;
@@ -133,11 +179,11 @@ export const useStore = create<AppState>()(
         return get().apiKey;
       },
 
-      setApiKey: (key) => set({ apiKey: key }),
+      setApiKey: (key) => triggerPersist({ apiKey: key }),
 
-      setCurrentModel: (model) => set({ currentModel: model }),
+      setCurrentModel: (model) => triggerPersist({ currentModel: model }),
 
-      setFluxMode: (mode) => set({ fluxMode: mode }),
+      setFluxMode: (mode) => triggerPersist({ fluxMode: mode }),
 
       addMessage: (message) =>
         set((state) => {
@@ -192,9 +238,9 @@ export const useStore = create<AppState>()(
         }),
 
       updateConfig: (config) =>
-        set((state) => ({
-          config: { ...state.config, ...config },
-        })),
+        triggerPersist({
+          config: { ...get().config, ...config },
+        }),
 
       resetStreaming: () => set({ streamingContent: '' }),
 
@@ -212,28 +258,41 @@ export const useStore = create<AppState>()(
           set({ abortController: null, isLoading: false });
         }
       },
-    }),
-    {
-      name: 'sensenova-storage',
-      partialize: (state) => ({
-        apiKey: state.apiKey,
-        currentModel: state.currentModel,
-        config: state.config,
-        fluxMode: state.fluxMode,
-        // 暂时不保存 messagesByModel，避免 localStorage 溢出
-        // messagesByModel: state.messagesByModel,
-      }),
-      merge: (persistedState, currentState) => {
-        const ps = persistedState as Partial<AppState>;
-        return {
-          ...currentState,
-          ...ps,
-          config: {
-            ...currentState.config,
-            ...(ps.config || {}),
-          },
-        };
-      },
-    }
-  )
+    };
+  }
 );
+
+async function hydrateStore() {
+  try {
+    let apiKey = await getConfig('apiKey');
+    let currentModel = await getConfig('currentModel');
+    let config = await getConfig('config');
+    let fluxMode = await getConfig('fluxMode');
+
+    const migrated = migrateFromLocalStorage();
+    if (migrated) {
+      if (migrated.apiKey !== undefined) apiKey = migrated.apiKey;
+      if (migrated.currentModel !== undefined) currentModel = migrated.currentModel;
+      if (migrated.config !== undefined) config = migrated.config;
+      if (migrated.fluxMode !== undefined) fluxMode = migrated.fluxMode;
+    }
+
+    const updates: Partial<AppState> = {};
+    if (apiKey !== undefined) updates.apiKey = apiKey;
+    if (currentModel !== undefined) updates.currentModel = currentModel;
+    if (config !== undefined) updates.config = { ...defaultConfig, ...config };
+    if (fluxMode !== undefined) updates.fluxMode = fluxMode;
+    updates._hydrated = true;
+
+    if (Object.keys(updates).length > 0) {
+      useStore.setState(updates);
+    } else {
+      useStore.setState({ _hydrated: true });
+    }
+  } catch (e) {
+    console.error('Failed to hydrate store from IndexedDB:', e);
+    useStore.setState({ _hydrated: true });
+  }
+}
+
+hydrateStore();

@@ -85,7 +85,9 @@ export interface ModelConfig {
   hidreamServerUrl: string;
   ernieServerUrl: string;
   qwenServerUrl: string;
+  qwenApiKey: string;
   fireredServerUrl: string;
+  fireredApiKey: string;
   sensenovaU1ServerUrl: string;
 }
 

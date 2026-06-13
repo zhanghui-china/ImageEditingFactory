@@ -867,6 +867,20 @@ export default function SettingsPanel() {
               />
             </div>
 
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Settings size={14} className="text-orange-400" />
+                <label className="text-xs text-text-secondary">API Key</label>
+              </div>
+              <input
+                type="password"
+                value={config.qwenApiKey}
+                onChange={(e) => updateConfig({ qwenApiKey: e.target.value })}
+                className="w-full bg-deep-bg border border-card-bg rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-orange-400"
+                placeholder="sk-..."
+              />
+            </div>
+
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Sliders size={14} className="text-orange-400" />
@@ -950,6 +964,20 @@ export default function SettingsPanel() {
                 onChange={(e) => updateConfig({ fireredServerUrl: e.target.value })}
                 className="w-full bg-deep-bg border border-card-bg rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-red-400"
                 placeholder="http://192.168.199.107:8091"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Settings size={14} className="text-red-400" />
+                <label className="text-xs text-text-secondary">API Key</label>
+              </div>
+              <input
+                type="password"
+                value={config.fireredApiKey}
+                onChange={(e) => updateConfig({ fireredApiKey: e.target.value })}
+                className="w-full bg-deep-bg border border-card-bg rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-red-400"
+                placeholder="sk-..."
               />
             </div>
 

@@ -1,17 +1,6 @@
-const HISTORY_API_URL = '/api/history';
+import { db, type HistoryRecord } from './db';
 
-export interface HistoryRecord {
-  id: number;
-  model: string;
-  generate_type: string;
-  prompt: string;
-  request_images: string[];
-  response_result: string;
-  response_images: string[];
-  request_time: string;
-  response_time: string;
-  duration_ms: number;
-}
+export type { HistoryRecord };
 
 export interface SaveHistoryParams {
   model: string;
@@ -36,18 +25,8 @@ export interface QueryHistoryParams {
 }
 
 export async function saveHistory(params: SaveHistoryParams): Promise<number> {
-  const response = await fetch(`${HISTORY_API_URL}/save`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
-  });
-
-  if (!response.ok) {
-    throw new Error(`保存历史记录失败: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.id;
+  const id = await db.history.add(params as HistoryRecord);
+  return id as number;
 }
 
 export async function queryHistory(params: QueryHistoryParams = {}): Promise<{
@@ -56,70 +35,74 @@ export async function queryHistory(params: QueryHistoryParams = {}): Promise<{
   limit: number;
   offset: number;
 }> {
-  const searchParams = new URLSearchParams();
-  
-  if (params.model) searchParams.append('model', params.model);
-  if (params.generate_type) searchParams.append('generate_type', params.generate_type);
-  if (params.prompt_keyword) searchParams.append('prompt_keyword', params.prompt_keyword);
-  if (params.start_date) searchParams.append('start_date', params.start_date);
-  if (params.end_date) searchParams.append('end_date', params.end_date);
-  if (params.limit) searchParams.append('limit', params.limit.toString());
-  if (params.offset) searchParams.append('offset', params.offset.toString());
+  let collection = db.history.orderBy('request_time').reverse();
 
-  const response = await fetch(`${HISTORY_API_URL}/query?${searchParams.toString()}`);
+  const allRecords = await collection.toArray();
 
-  if (!response.ok) {
-    throw new Error(`查询历史记录失败: ${response.status}`);
+  let filtered = allRecords;
+
+  if (params.model) {
+    filtered = filtered.filter((r) => r.model === params.model);
   }
 
-  return response.json();
+  if (params.generate_type) {
+    filtered = filtered.filter((r) => r.generate_type === params.generate_type);
+  }
+
+  if (params.prompt_keyword) {
+    const keyword = params.prompt_keyword.toLowerCase();
+    filtered = filtered.filter(
+      (r) => r.prompt && r.prompt.toLowerCase().includes(keyword)
+    );
+  }
+
+  if (params.start_date) {
+    filtered = filtered.filter((r) => r.request_time >= params.start_date!);
+  }
+
+  if (params.end_date) {
+    filtered = filtered.filter((r) => r.request_time <= params.end_date!);
+  }
+
+  const count = filtered.length;
+  const limit = params.limit || 50;
+  const offset = params.offset || 0;
+  const records = filtered.slice(offset, offset + limit);
+
+  return { records, count, limit, offset };
 }
 
 export async function getHistoryById(id: number): Promise<HistoryRecord> {
-  const response = await fetch(`${HISTORY_API_URL}/${id}`);
-
-  if (!response.ok) {
-    throw new Error(`获取历史记录失败: ${response.status}`);
+  const record = await db.history.get(id);
+  if (!record) {
+    throw new Error(`历史记录不存在: ${id}`);
   }
-
-  return response.json();
+  return record;
 }
 
 export async function deleteHistory(id: number): Promise<void> {
-  const response = await fetch(`${HISTORY_API_URL}/${id}`, {
-    method: 'DELETE',
-  });
-
-  if (!response.ok) {
-    throw new Error(`删除历史记录失败: ${response.status}`);
-  }
+  await db.history.delete(id);
 }
 
 export function getHistoryImageUrl(path: string): string {
-  if (path.startsWith('/')) {
+  if (path.startsWith('/') || path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
     return path;
   }
-  return `${HISTORY_API_URL}/images/${path}`;
+  return path;
 }
 
 export async function getModels(): Promise<Array<{ id: string; name: string }>> {
-  const response = await fetch(`${HISTORY_API_URL.replace('/history', '/models')}`);
-  
-  if (!response.ok) {
-    throw new Error(`获取模型列表失败: ${response.status}`);
-  }
+  const allRecords = await db.history.toArray();
+  const modelSet = new Set<string>();
+  allRecords.forEach((r) => modelSet.add(r.model));
 
-  const data = await response.json();
-  return data.models;
+  return Array.from(modelSet).map((id) => ({ id, name: id }));
 }
 
 export async function getGenerateTypes(): Promise<Array<{ id: string; name: string }>> {
-  const response = await fetch(`${HISTORY_API_URL.replace('/history', '/generate-types')}`);
-  
-  if (!response.ok) {
-    throw new Error(`获取生成类型列表失败: ${response.status}`);
-  }
+  const typeSet = new Set<string>();
+  const allRecords = await db.history.toArray();
+  allRecords.forEach((r) => typeSet.add(r.generate_type));
 
-  const data = await response.json();
-  return data.types;
+  return Array.from(typeSet).map((id) => ({ id, name: id }));
 }

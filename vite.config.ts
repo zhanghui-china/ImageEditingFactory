@@ -43,26 +43,6 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/ernie-images/, ''),
       },
-      '/qwen-api': {
-        target: 'http://192.168.199.107:5000',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/qwen-api/, ''),
-      },
-      '/qwen-images': {
-        target: 'http://192.168.199.107:5000',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/qwen-images/, ''),
-      },
-      '/firered-api': {
-        target: 'http://192.168.199.107:8091',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/firered-api/, ''),
-      },
-      '/firered-images': {
-        target: 'http://192.168.199.107:8091',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/firered-images/, ''),
-      },
       '/sensenova-u1-api': {
         target: 'http://192.168.199.107:8092',
         changeOrigin: true,
@@ -77,10 +57,6 @@ export default defineConfig({
         target: 'http://192.168.199.107:8000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/qwen35-api/, ''),
-      },
-      '/api/history': {
-        target: 'http://localhost:8789',
-        changeOrigin: true,
       },
     },
   },

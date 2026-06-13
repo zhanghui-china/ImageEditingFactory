@@ -937,43 +937,74 @@ export async function qwenEditImage({
 }: QwenEditImageParams): Promise<void> {
   try {
     const QWEN_API_URL = getServerUrl('qwenServerUrl', 'VITE_QWEN_API_URL', 'http://192.168.199.107:5000');
-    const formData = new FormData();
-    images.forEach((image) => {
-      formData.append('files', image);
-    });
-    formData.append('prompt', prompt);
-    formData.append('num_inference_steps', numInferenceSteps.toString());
-    formData.append('guidance_scale', guidanceScale.toString());
-    formData.append('true_cfg_scale', trueCfgScale.toString());
-    formData.append('seed', seed.toString());
+    const qwenApiKey = useStore.getState().config.qwenApiKey || '';
+    const imagesBase64: string[] = [];
+    for (const image of images) {
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onload = () => resolve(reader.result as string);
+      });
+      reader.readAsDataURL(image);
+      imagesBase64.push(await base64Promise);
+    }
 
-    const response = await fetch(`${QWEN_API_URL}/edit_image`, {
+    const content: any[] = [];
+
+    imagesBase64.forEach(base64 => {
+      content.push({
+        type: 'image_url',
+        image_url: { url: base64 }
+      });
+    });
+
+    content.push({ type: 'text', text: prompt });
+
+    const requestBody = {
+      messages: [{
+        role: 'user',
+        content: content
+      }],
+      extra_body: {
+        num_inference_steps: numInferenceSteps,
+        guidance_scale: guidanceScale,
+        true_cfg_scale: trueCfgScale,
+        seed: seed,
+      }
+    };
+
+    const response = await fetch(`${QWEN_API_URL}/v1/chat/completions`, {
       method: 'POST',
-      body: formData,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(qwenApiKey ? { 'Authorization': `Bearer ${qwenApiKey}` } : {}),
+      },
+      body: JSON.stringify(requestBody),
       signal,
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || `请求失败: ${response.status}`);
+      throw new Error(errorData.error?.message || errorData.message || `请求失败: ${response.status}`);
     }
 
     const data = await response.json();
-    
-    // 支持新旧两种响应格式
-    let imageUrls: string[];
-    if (data.output_urls && Array.isArray(data.output_urls)) {
-      // 新格式：多个图片
-      imageUrls = data.output_urls.map((url: string) => 
-        url.startsWith('/') ? `/qwen-images${url}` : url
-      );
-    } else if (data.output_url) {
-      // 旧格式：单个图片
-      imageUrls = [data.output_url.startsWith('/') ? `/qwen-images${data.output_url}` : data.output_url];
-    } else {
-      throw new Error('Invalid response format');
+
+    let imageUrls: string[] = [];
+    if (data.choices && data.choices[0]?.message?.content) {
+      const respContent = data.choices[0].message.content;
+      if (Array.isArray(respContent)) {
+        respContent.forEach((item: any) => {
+          if (item.type === 'image_url' && item.image_url?.url) {
+            imageUrls.push(item.image_url.url);
+          }
+        });
+      }
     }
-    
+
+    if (imageUrls.length === 0) {
+      throw new Error('未找到生成的图片');
+    }
+
     onComplete(imageUrls);
   } catch (error) {
     console.error('Qwen-Image-Edit 请求异常:', error);
@@ -1008,6 +1039,7 @@ export async function fireRedEditImage({
 }: FireRedEditImageParams): Promise<void> {
   try {
     const FIRERED_API_URL = getServerUrl('fireredServerUrl', 'VITE_FIRERED_API_URL', 'http://192.168.199.107:8091');
+    const fireredApiKey = useStore.getState().config.fireredApiKey || '';
     const imagesBase64: string[] = [];
     for (const image of images) {
       const reader = new FileReader();
@@ -1049,7 +1081,10 @@ export async function fireRedEditImage({
     console.log('发送请求到 FireRed 服务...');
     const response = await fetch(`${FIRERED_API_URL}/v1/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(fireredApiKey ? { 'Authorization': `Bearer ${fireredApiKey}` } : {}),
+      },
       body: JSON.stringify(requestBody),
       signal,
     });

@@ -13,23 +13,6 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
-const urlToBase64 = (url: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    fetch(url)
-      .then(response => response.blob())
-      .then(blob => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      })
-      .catch(error => {
-        console.error('urlToBase64 error:', error);
-        resolve(url);
-      });
-  });
-};
-
 export default function QwenInputArea() {
   const [input, setInput] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -129,23 +112,12 @@ export default function QwenInputArea() {
       onComplete: async (imageUrls) => {
         const duration = Date.now() - startTime;
         const responseTime = new Date().toISOString();
-        
-        // 转换为base64保存
-        const savedImageUrls = await Promise.all(
-          imageUrls.map(async (url) => {
-            // 只要不是 data URL 格式，都尝试转换为 base64
-            if (!url.startsWith('data:')) {
-              return await urlToBase64(url);
-            }
-            return url;
-          })
-        );
 
         const assistantMessage = {
           id: (Date.now() + 1).toString(),
           role: 'assistant' as const,
           content: '',
-          images: savedImageUrls,
+          images: imageUrls,
           timestamp: Date.now(),
           model: currentModel,
           duration: duration,
@@ -159,7 +131,7 @@ export default function QwenInputArea() {
           prompt: currentInput,
           request_images: requestImagesBase64,
           response_result: 'success',
-          response_images: savedImageUrls,
+          response_images: imageUrls,
           request_time: requestTime,
           response_time: responseTime,
           duration_ms: duration,
